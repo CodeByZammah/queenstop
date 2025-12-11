@@ -76,23 +76,23 @@ const Jewellery = () => {
           <div className="relative z-10 container mx-auto px-4 pt-32 pb-20">
             <div className="max-w-2xl">
               <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 backdrop-blur-sm border border-primary/30 mb-6">
-                <Gem size={16} className="text-gold-light" />
-                <span className="text-cream text-sm font-medium">Luxury Jewellery</span>
+                <Gem size={16} className="text-primary" />
+                <span className="text-background text-sm font-medium">Luxury Jewellery</span>
               </span>
-              <h1 className="text-4xl md:text-6xl font-display font-bold text-cream mb-6">
-                Timeless <span className="text-gold-light">Elegance</span>
+              <h1 className="text-4xl md:text-5xl font-bold text-background mb-6">
+                Timeless <span className="text-primary">Elegance</span>
               </h1>
-              <p className="text-lg text-cream/80 mb-8">
+              <p className="text-lg text-background/80 mb-8">
                 Discover our exquisite collection of handcrafted jewellery. Each piece tells a story 
                 of artistry, passion, and uncompromising quality.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button variant="gold" size="xl">
+                <Button size="lg" className="rounded-full">
                   <ShoppingBag size={20} className="mr-2" />
                   Shop Collection
                 </Button>
                 <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-                  <Button variant="hero-outline" size="xl">
+                  <Button variant="outline" size="lg" className="rounded-full border-background text-background hover:bg-background hover:text-foreground">
                     <MessageCircle size={20} className="mr-2" />
                     Enquire Now
                   </Button>
@@ -109,7 +109,7 @@ const Jewellery = () => {
               {features.map((feature) => (
                 <div key={feature.title} className="text-center p-6 rounded-2xl bg-card border border-border hover:border-primary/30 hover:shadow-card transition-elegant group">
                   <div className="w-14 h-14 rounded-xl bg-charcoal mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-elegant">
-                    <feature.icon className="text-gold-light" size={24} />
+                    <feature.icon className="text-primary" size={24} />
                   </div>
                   <h3 className="font-display font-semibold text-lg text-foreground mb-2">{feature.title}</h3>
                   <p className="text-muted-foreground text-sm">{feature.description}</p>
@@ -152,7 +152,7 @@ const Jewellery = () => {
               ))}
             </div>
             <div className="text-center mt-12">
-              <Button variant="gold" size="lg">
+              <Button size="lg" className="rounded-full">
                 View All Products
                 <ArrowRight className="ml-2" size={18} />
               </Button>
@@ -161,16 +161,16 @@ const Jewellery = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 bg-charcoal text-cream">
+        <section className="py-20 bg-charcoal text-background">
           <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl md:text-4xl font-display font-bold mb-6">
-              Find Your <span className="text-gold-light">Perfect Piece</span>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              Find Your <span className="text-primary">Perfect Piece</span>
             </h2>
-            <p className="text-cream/70 max-w-xl mx-auto mb-8">
+            <p className="text-background/70 max-w-xl mx-auto mb-8">
               Not finding what you're looking for? Contact us for custom designs or special requests.
             </p>
             <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-              <Button variant="gold" size="xl">
+              <Button size="lg" className="rounded-full">
                 <MessageCircle size={20} className="mr-2" />
                 Chat on WhatsApp
               </Button>

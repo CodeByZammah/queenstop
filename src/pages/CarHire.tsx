@@ -54,24 +54,24 @@ const CarHire = () => {
           
           <div className="relative z-10 container mx-auto px-4 pt-32 pb-20 text-center">
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 backdrop-blur-sm border border-primary/30 mb-6">
-              <Car size={16} className="text-gold-light" />
-              <span className="text-cream text-sm font-medium">Premium Car Hire</span>
+              <Car size={16} className="text-primary" />
+              <span className="text-background text-sm font-medium">Premium Car Hire</span>
             </span>
-            <h1 className="text-4xl md:text-6xl font-display font-bold text-cream mb-6">
-              Drive in <span className="text-gold-light">Style</span>
+            <h1 className="text-4xl md:text-5xl font-bold text-background mb-6">
+              Drive in <span className="text-primary">Style</span>
             </h1>
-            <p className="text-lg text-cream/80 max-w-2xl mx-auto mb-8">
+            <p className="text-lg text-background/80 max-w-2xl mx-auto mb-8">
               Experience luxury on the road with our premium fleet of vehicles. 
               Perfect for weddings, corporate events, or any special occasion.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-                <Button variant="gold" size="xl">
+                <Button size="lg" className="rounded-full">
                   <MessageCircle size={20} className="mr-2" />
                   Book via WhatsApp
                 </Button>
               </a>
-              <Button variant="hero-outline" size="xl">
+              <Button variant="outline" size="lg" className="rounded-full border-background text-background hover:bg-background hover:text-foreground">
                 <Phone size={20} className="mr-2" />
                 Call Us
               </Button>
@@ -107,7 +107,7 @@ const CarHire = () => {
                   </div>
                 </div>
                 <div className="flex items-end">
-                  <Button variant="gold" className="w-full h-[50px]">
+                  <Button className="w-full h-[50px]">
                     Search Vehicles
                   </Button>
                 </div>
@@ -180,16 +180,16 @@ const CarHire = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 bg-charcoal text-cream">
+        <section className="py-20 bg-charcoal text-background">
           <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl md:text-4xl font-display font-bold mb-6">
-              Ready to <span className="text-gold-light">Experience Luxury?</span>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              Ready to <span className="text-primary">Experience Luxury?</span>
             </h2>
-            <p className="text-cream/70 max-w-xl mx-auto mb-8">
+            <p className="text-background/70 max-w-xl mx-auto mb-8">
               Contact us today and let us help you find the perfect vehicle for your needs.
             </p>
             <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-              <Button variant="gold" size="xl">
+              <Button size="lg" className="rounded-full">
                 <MessageCircle size={20} className="mr-2" />
                 Chat on WhatsApp
               </Button>
