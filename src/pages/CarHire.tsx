@@ -1,0 +1,206 @@
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import { Button } from "@/components/ui/button";
+import { Car, Shield, Clock, Award, Users, MapPin, Calendar, Phone, MessageCircle, ArrowRight, Check } from "lucide-react";
+import heroCar from "@/assets/hero-car.jpg";
+
+const cars = [
+  {
+    name: "Mercedes S-Class",
+    category: "Luxury Sedan",
+    price: "From $150/day",
+    features: ["Leather Interior", "Climate Control", "GPS Navigation", "Chauffeur Available"],
+    image: heroCar,
+  },
+  {
+    name: "BMW 7 Series",
+    category: "Executive",
+    price: "From $180/day",
+    features: ["Premium Sound", "Massage Seats", "WiFi Hotspot", "Chauffeur Available"],
+    image: heroCar,
+  },
+  {
+    name: "Rolls Royce Ghost",
+    category: "Ultra Luxury",
+    price: "From $500/day",
+    features: ["Starlight Ceiling", "Champagne Cooler", "Privacy Glass", "Chauffeur Included"],
+    image: heroCar,
+  },
+];
+
+const features = [
+  { icon: Shield, title: "Fully Insured", description: "Comprehensive coverage for peace of mind" },
+  { icon: Clock, title: "24/7 Support", description: "Round-the-clock assistance whenever you need" },
+  { icon: Award, title: "Premium Fleet", description: "Only the finest vehicles in our collection" },
+  { icon: Users, title: "Professional Chauffeurs", description: "Trained, licensed, and courteous drivers" },
+];
+
+const CarHire = () => {
+  const whatsappNumber = "+1234567890";
+  const whatsappMessage = encodeURIComponent("Hello! I'm interested in booking a car.");
+  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
+
+  return (
+    <div className="min-h-screen">
+      <Header />
+      
+      <main>
+        {/* Hero Section */}
+        <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
+          <div className="absolute inset-0">
+            <img src={heroCar} alt="Luxury car hire" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-hero" />
+          </div>
+          
+          <div className="relative z-10 container mx-auto px-4 pt-32 pb-20 text-center">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 backdrop-blur-sm border border-primary/30 mb-6">
+              <Car size={16} className="text-gold-light" />
+              <span className="text-cream text-sm font-medium">Premium Car Hire</span>
+            </span>
+            <h1 className="text-4xl md:text-6xl font-display font-bold text-cream mb-6">
+              Drive in <span className="text-gold-light">Style</span>
+            </h1>
+            <p className="text-lg text-cream/80 max-w-2xl mx-auto mb-8">
+              Experience luxury on the road with our premium fleet of vehicles. 
+              Perfect for weddings, corporate events, or any special occasion.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                <Button variant="gold" size="xl">
+                  <MessageCircle size={20} className="mr-2" />
+                  Book via WhatsApp
+                </Button>
+              </a>
+              <Button variant="hero-outline" size="xl">
+                <Phone size={20} className="mr-2" />
+                Call Us
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* Booking Form Section */}
+        <section className="py-16 bg-gradient-champagne -mt-20 relative z-20">
+          <div className="container mx-auto px-4">
+            <div className="bg-card rounded-2xl shadow-elevated p-8 max-w-4xl mx-auto">
+              <h2 className="text-2xl font-display font-bold text-foreground mb-6 text-center">Quick Booking</h2>
+              <form className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Pick-up Location</label>
+                  <div className="flex items-center gap-2 p-3 border border-border rounded-lg bg-background">
+                    <MapPin size={18} className="text-primary" />
+                    <input type="text" placeholder="Enter location" className="flex-1 bg-transparent outline-none text-foreground" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Drop-off Location</label>
+                  <div className="flex items-center gap-2 p-3 border border-border rounded-lg bg-background">
+                    <MapPin size={18} className="text-primary" />
+                    <input type="text" placeholder="Enter location" className="flex-1 bg-transparent outline-none text-foreground" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Date</label>
+                  <div className="flex items-center gap-2 p-3 border border-border rounded-lg bg-background">
+                    <Calendar size={18} className="text-primary" />
+                    <input type="date" className="flex-1 bg-transparent outline-none text-foreground" />
+                  </div>
+                </div>
+                <div className="flex items-end">
+                  <Button variant="gold" className="w-full h-[50px]">
+                    Search Vehicles
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section className="py-20 bg-background">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <span className="text-primary font-medium text-sm uppercase tracking-widest mb-4 block">Why Choose Us</span>
+              <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground">
+                The Best for <span className="text-primary">You</span>
+              </h2>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {features.map((feature) => (
+                <div key={feature.title} className="text-center p-6 rounded-2xl bg-card border border-border hover:border-primary/30 hover:shadow-card transition-elegant group">
+                  <div className="w-14 h-14 rounded-xl bg-primary mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-elegant">
+                    <feature.icon className="text-primary-foreground" size={24} />
+                  </div>
+                  <h3 className="font-display font-semibold text-lg text-foreground mb-2">{feature.title}</h3>
+                  <p className="text-muted-foreground text-sm">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Fleet Section */}
+        <section className="py-20 bg-gradient-champagne">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <span className="text-primary font-medium text-sm uppercase tracking-widest mb-4 block">Our Fleet</span>
+              <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground">
+                Premium <span className="text-primary">Vehicles</span>
+              </h2>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {cars.map((car) => (
+                <div key={car.name} className="bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-elevated transition-elegant group">
+                  <div className="relative h-56 overflow-hidden">
+                    <img src={car.image} alt={car.name} className="w-full h-full object-cover transition-elegant group-hover:scale-110" />
+                    <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-primary/90 text-primary-foreground text-xs font-medium">
+                      {car.category}
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    <h3 className="text-xl font-display font-semibold text-foreground mb-2">{car.name}</h3>
+                    <p className="text-primary font-bold text-lg mb-4">{car.price}</p>
+                    <ul className="space-y-2 mb-6">
+                      {car.features.map((feature) => (
+                        <li key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Check size={16} className="text-primary" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                    <Button variant="outline" className="w-full group">
+                      Book Now
+                      <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={16} />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-20 bg-charcoal text-cream">
+          <div className="container mx-auto px-4 text-center">
+            <h2 className="text-3xl md:text-4xl font-display font-bold mb-6">
+              Ready to <span className="text-gold-light">Experience Luxury?</span>
+            </h2>
+            <p className="text-cream/70 max-w-xl mx-auto mb-8">
+              Contact us today and let us help you find the perfect vehicle for your needs.
+            </p>
+            <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+              <Button variant="gold" size="xl">
+                <MessageCircle size={20} className="mr-2" />
+                Chat on WhatsApp
+              </Button>
+            </a>
+          </div>
+        </section>
+      </main>
+
+      <Footer />
+    </div>
+  );
+};
+
+export default CarHire;
