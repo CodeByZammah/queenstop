@@ -112,11 +112,11 @@ const Contact = () => {
                 </div>
 
                 {/* WhatsApp CTA */}
-                <div className="p-6 rounded-2xl bg-charcoal text-cream">
-                  <h3 className="font-display font-semibold text-lg mb-2">Quick Response?</h3>
-                  <p className="text-cream/70 mb-4">Chat with us on WhatsApp for instant assistance!</p>
+                <div className="p-6 rounded-2xl bg-charcoal text-background">
+                  <h3 className="font-semibold text-lg mb-2">Quick Response?</h3>
+                  <p className="text-background/70 mb-4">Chat with us on WhatsApp for instant assistance!</p>
                   <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-                    <Button variant="gold" className="w-full">
+                    <Button className="w-full">
                       <MessageCircle size={18} className="mr-2" />
                       Chat on WhatsApp
                     </Button>
@@ -195,7 +195,7 @@ const Contact = () => {
                         className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-smooth resize-none"
                       />
                     </div>
-                    <Button variant="gold" size="lg" className="w-full">
+                    <Button size="lg" className="w-full">
                       <Send size={18} className="mr-2" />
                       Send Message
                     </Button>

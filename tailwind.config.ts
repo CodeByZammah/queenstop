@@ -14,9 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["Playfair Display", "serif"],
-        body: ["Montserrat", "sans-serif"],
-        accent: ["Cormorant Garamond", "serif"],
+        body: ["Poppins", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -24,17 +22,25 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
-        gold: {
-          DEFAULT: "hsl(var(--gold))",
-          light: "hsl(var(--gold-light))",
-          dark: "hsl(var(--gold-dark))",
+        yellow: {
+          DEFAULT: "hsl(var(--yellow))",
+          light: "hsl(var(--yellow-light))",
+          dark: "hsl(var(--yellow-dark))",
         },
-        champagne: "hsl(var(--champagne))",
-        cream: "hsl(var(--cream))",
+        orange: {
+          DEFAULT: "hsl(var(--orange))",
+          light: "hsl(var(--orange-light))",
+        },
         charcoal: {
           DEFAULT: "hsl(var(--charcoal))",
           light: "hsl(var(--charcoal-light))",
         },
+        gray: {
+          DEFAULT: "hsl(var(--gray))",
+          dark: "hsl(var(--gray-dark))",
+          light: "hsl(var(--gray-light))",
+        },
+        "off-white": "hsl(var(--off-white))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",

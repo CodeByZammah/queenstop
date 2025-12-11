@@ -44,7 +44,7 @@ const About = () => {
                   that tells your story, or wedding accessories that complete your perfect day — we're 
                   committed to making every moment memorable.
                 </p>
-                <Button variant="gold" size="lg">
+                <Button size="lg" className="rounded-full">
                   Get in Touch
                   <ArrowRight className="ml-2" size={18} />
                 </Button>
@@ -71,9 +71,9 @@ const About = () => {
                   customer satisfaction.
                 </p>
               </div>
-              <div className="p-8 rounded-2xl bg-charcoal text-cream">
-                <h2 className="text-2xl font-display font-bold mb-4">Our Vision</h2>
-                <p className="text-cream/80">
+              <div className="p-8 rounded-2xl bg-charcoal text-background">
+                <h2 className="text-2xl font-bold mb-4">Our Vision</h2>
+                <p className="text-background/80">
                   To be the premier destination for luxury lifestyle services, recognized for our 
                   commitment to excellence, innovation, and creating unforgettable experiences for 
                   every client we serve.

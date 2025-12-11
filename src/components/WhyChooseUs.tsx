@@ -1,85 +1,116 @@
-import { Shield, Clock, Award, Headphones, Sparkles, Heart } from "lucide-react";
+import { DollarSign, Shield, Smartphone, Check } from "lucide-react";
 
 const features = [
   {
+    icon: DollarSign,
+    title: "Performant & Powerful",
+    description: "Premium quality services at competitive prices with flexible packages.",
+    variant: "yellow" as const,
+    badges: ["PayPal", "Visa", "Mastercard"],
+  },
+  {
     icon: Shield,
-    title: "Premium Quality",
-    description: "Every product and service meets our highest standards of excellence and craftsmanship.",
-    color: "bg-primary",
+    title: "Safety First",
+    description: "Your safety and security is our top priority with insured services.",
+    variant: "orange" as const,
+    guarantees: ["Guarantee", "Guarantee"],
   },
   {
-    icon: Clock,
-    title: "24/7 Availability",
-    description: "Round-the-clock service and support for all your luxury needs, whenever you need us.",
-    color: "bg-charcoal",
-  },
-  {
-    icon: Award,
-    title: "Award Winning",
-    description: "Recognized for exceptional service and unmatched customer satisfaction.",
-    color: "bg-gold-dark",
-  },
-  {
-    icon: Headphones,
-    title: "Dedicated Support",
-    description: "Personal concierge service to ensure your experience exceeds expectations.",
-    color: "bg-primary",
-  },
-  {
-    icon: Sparkles,
-    title: "Authentic & Genuine",
-    description: "100% authentic products with certificates of authenticity and quality guarantees.",
-    color: "bg-charcoal",
-  },
-  {
-    icon: Heart,
-    title: "Customer First",
-    description: "Your satisfaction is our priority. We go above and beyond for every client.",
-    color: "bg-gold-dark",
+    icon: Smartphone,
+    title: "100% Digital",
+    description: "Easy online booking and management from any device, anywhere.",
+    variant: "white" as const,
+    platforms: ["Apple", "Android", "Online"],
   },
 ];
 
 const WhyChooseUs = () => {
   return (
-    <section className="py-24 bg-background">
+    <section className="py-20 bg-muted">
       <div className="container mx-auto px-4">
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="text-primary font-medium text-sm uppercase tracking-widest mb-4 block">
-            Why Choose Us
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <span className="text-primary font-semibold text-sm uppercase tracking-wider mb-3 block">
+            What We Offer
           </span>
-          <h2 className="text-3xl md:text-5xl font-display font-bold text-foreground mb-6">
-            The Best for <span className="text-primary">You</span>
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            We Offer The Best <span className="text-primary">For You</span>
           </h2>
-          <p className="text-muted-foreground text-lg">
-            At Queenstop, we don't just offer services — we deliver experiences that 
-            exceed expectations and create lasting memories.
+          <p className="text-muted-foreground">
+            Premium services designed to exceed your expectations with quality,
+            safety, and convenience at every step.
           </p>
         </div>
 
         {/* Features Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {features.map((feature, index) => (
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          {features.map((feature) => (
             <div
               key={feature.title}
-              className="group relative p-8 rounded-2xl bg-card border border-border hover:border-primary/30 shadow-soft hover:shadow-card transition-elegant"
-              style={{ animationDelay: `${index * 100}ms` }}
+              className={`relative p-6 rounded-2xl transition-elegant hover:scale-[1.02] ${
+                feature.variant === "yellow"
+                  ? "bg-primary text-primary-foreground"
+                  : feature.variant === "orange"
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-card border border-border shadow-card"
+              }`}
             >
               {/* Icon */}
-              <div className={`w-14 h-14 rounded-xl ${feature.color} flex items-center justify-center mb-6 shadow-soft group-hover:scale-110 transition-elegant`}>
-                <feature.icon className="text-primary-foreground" size={24} />
+              <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-5 ${
+                feature.variant === "white" 
+                  ? "bg-primary text-primary-foreground" 
+                  : "bg-background/20"
+              }`}>
+                <feature.icon size={28} />
               </div>
 
               {/* Content */}
-              <h3 className="text-xl font-display font-semibold text-foreground mb-3">
+              <h3 className="text-xl font-bold mb-3">
                 {feature.title}
               </h3>
-              <p className="text-muted-foreground leading-relaxed">
+              <p className={`text-sm leading-relaxed mb-4 ${
+                feature.variant === "white" ? "text-muted-foreground" : "opacity-90"
+              }`}>
                 {feature.description}
               </p>
 
-              {/* Decorative Element */}
-              <div className="absolute top-4 right-4 w-20 h-20 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-elegant" />
+              {/* Badges */}
+              {feature.badges && (
+                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-current/20">
+                  {feature.badges.map((badge) => (
+                    <span
+                      key={badge}
+                      className="text-xs font-medium px-2 py-1 rounded bg-background/20"
+                    >
+                      {badge}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Guarantees */}
+              {feature.guarantees && (
+                <div className="flex items-center gap-4 mt-4 pt-4 border-t border-current/20">
+                  {feature.guarantees.map((g, i) => (
+                    <span key={i} className="flex items-center gap-1 text-sm">
+                      <Check size={14} className="text-green-400" />
+                      {g}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Platforms */}
+              {feature.platforms && (
+                <div className="flex items-center gap-4 mt-4 pt-4 border-t border-border">
+                  {feature.platforms.map((p) => (
+                    <span key={p} className="flex items-center gap-1 text-sm text-primary">
+                      <span className="w-2 h-2 rounded-full bg-primary" />
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

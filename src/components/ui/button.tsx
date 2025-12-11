@@ -5,20 +5,17 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-gold-dark shadow-soft hover:shadow-gold",
+        default: "bg-primary text-primary-foreground hover:bg-yellow-dark shadow-soft hover:shadow-yellow",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline: "border-2 border-primary bg-transparent text-primary hover:bg-primary hover:text-primary-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-champagne shadow-soft",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-gray-light shadow-soft",
         ghost: "hover:bg-secondary hover:text-secondary-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        gold: "bg-gradient-to-r from-gold to-gold-light text-primary-foreground shadow-gold hover:shadow-elevated hover:scale-[1.02] active:scale-[0.98]",
-        hero: "bg-primary text-primary-foreground border-2 border-primary hover:bg-transparent hover:text-primary shadow-gold hover:shadow-elevated",
-        "hero-outline": "border-2 border-cream bg-transparent text-cream hover:bg-cream hover:text-foreground",
-        elegant: "bg-charcoal text-cream hover:bg-charcoal-light shadow-soft",
+        accent: "bg-accent text-accent-foreground hover:bg-orange-light shadow-soft",
       },
       size: {
         default: "h-11 px-6 py-2",

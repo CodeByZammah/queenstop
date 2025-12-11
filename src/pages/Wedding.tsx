@@ -75,23 +75,23 @@ const Wedding = () => {
           
           <div className="relative z-10 container mx-auto px-4 pt-32 pb-20 text-center">
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 backdrop-blur-sm border border-primary/30 mb-6">
-              <Heart size={16} className="text-gold-light" />
-              <span className="text-cream text-sm font-medium">Wedding Accessories</span>
+              <Heart size={16} className="text-primary" />
+              <span className="text-background text-sm font-medium">Wedding Accessories</span>
             </span>
-            <h1 className="text-4xl md:text-6xl font-display font-bold text-cream mb-6">
-              Your Perfect <span className="text-gold-light">Day</span>
+            <h1 className="text-4xl md:text-5xl font-bold text-background mb-6">
+              Your Perfect <span className="text-primary">Day</span>
             </h1>
-            <p className="text-lg text-cream/80 max-w-2xl mx-auto mb-8">
+            <p className="text-lg text-background/80 max-w-2xl mx-auto mb-8">
               Complete your bridal look with our stunning collection of wedding accessories. 
               From elegant veils to sparkling tiaras, every detail matters.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="gold" size="xl">
+              <Button size="lg" className="rounded-full">
                 <ShoppingBag size={20} className="mr-2" />
                 Shop Bridal
               </Button>
               <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-                <Button variant="hero-outline" size="xl">
+                <Button variant="outline" size="lg" className="rounded-full border-background text-background hover:bg-background hover:text-foreground">
                   <MessageCircle size={20} className="mr-2" />
                   Get Advice
                 </Button>
@@ -150,7 +150,7 @@ const Wedding = () => {
               ))}
             </div>
             <div className="text-center mt-12">
-              <Button variant="gold" size="lg">
+              <Button size="lg" className="rounded-full">
                 View Full Collection
                 <ArrowRight className="ml-2" size={18} />
               </Button>
@@ -159,16 +159,16 @@ const Wedding = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 bg-charcoal text-cream">
+        <section className="py-20 bg-charcoal text-background">
           <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl md:text-4xl font-display font-bold mb-6">
-              Make Your Day <span className="text-gold-light">Unforgettable</span>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              Make Your Day <span className="text-primary">Unforgettable</span>
             </h2>
-            <p className="text-cream/70 max-w-xl mx-auto mb-8">
+            <p className="text-background/70 max-w-xl mx-auto mb-8">
               Need help choosing the perfect accessories? Our bridal consultants are here to assist you.
             </p>
             <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-              <Button variant="gold" size="xl">
+              <Button size="lg" className="rounded-full">
                 <MessageCircle size={20} className="mr-2" />
                 Book a Consultation
               </Button>
