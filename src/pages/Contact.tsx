@@ -4,9 +4,13 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Phone, Mail, MapPin, MessageCircle, Send, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { siteConfig, getWhatsAppLink } from "@/config/siteConfig";
+import { Loader2 } from "lucide-react";
 
 const Contact = () => {
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -15,17 +19,43 @@ const Contact = () => {
     message: "",
   });
 
-  const whatsappNumber = "+1234567890";
-  const whatsappMessage = encodeURIComponent("Hello! I'd like to get in touch with Queenstop.");
-  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Message Sent!",
-      description: "We'll get back to you within 24 hours.",
-    });
-    setFormData({ name: "", email: "", phone: "", service: "", message: "" });
+    if (!formData.name || !formData.email || !formData.message) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.from("contact_submissions").insert({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || null,
+        subject: formData.service || null,
+        message: formData.message,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Message Sent!",
+        description: "We'll get back to you within 24 hours.",
+      });
+      setFormData({ name: "", email: "", phone: "", service: "", message: "" });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -45,7 +75,7 @@ const Contact = () => {
               Get in <span className="text-primary">Touch</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Have questions or ready to experience Queenstop? We'd love to hear from you. 
+              Have questions or ready to experience {siteConfig.businessName}? We'd love to hear from you. 
               Reach out and let's make something beautiful together.
             </p>
           </div>
@@ -66,8 +96,8 @@ const Contact = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">Phone</h3>
-                      <a href="tel:+1234567890" className="text-muted-foreground hover:text-primary transition-smooth">
-                        +1 234 567 890
+                      <a href={`tel:${siteConfig.phoneRaw}`} className="text-muted-foreground hover:text-primary transition-smooth">
+                        {siteConfig.phone}
                       </a>
                     </div>
                   </div>
@@ -78,8 +108,8 @@ const Contact = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">Email</h3>
-                      <a href="mailto:hello@queenstop.com" className="text-muted-foreground hover:text-primary transition-smooth">
-                        hello@queenstop.com
+                      <a href={`mailto:${siteConfig.email}`} className="text-muted-foreground hover:text-primary transition-smooth">
+                        {siteConfig.email}
                       </a>
                     </div>
                   </div>
@@ -91,8 +121,8 @@ const Contact = () => {
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">Address</h3>
                       <p className="text-muted-foreground">
-                        123 Luxury Avenue<br />
-                        New York, NY 10001
+                        {siteConfig.address.street}<br />
+                        {siteConfig.address.city}, {siteConfig.address.state} {siteConfig.address.zip}
                       </p>
                     </div>
                   </div>
@@ -104,8 +134,8 @@ const Contact = () => {
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">Business Hours</h3>
                       <p className="text-muted-foreground">
-                        Monday - Saturday: 9:00 AM - 8:00 PM<br />
-                        Sunday: 10:00 AM - 6:00 PM
+                        {siteConfig.businessHours.weekdays}<br />
+                        {siteConfig.businessHours.weekend}
                       </p>
                     </div>
                   </div>
@@ -115,7 +145,7 @@ const Contact = () => {
                 <div className="p-6 rounded-2xl bg-charcoal text-background">
                   <h3 className="font-semibold text-lg mb-2">Quick Response?</h3>
                   <p className="text-background/70 mb-4">Chat with us on WhatsApp for instant assistance!</p>
-                  <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                  <a href={getWhatsAppLink()} target="_blank" rel="noopener noreferrer">
                     <Button className="w-full">
                       <MessageCircle size={18} className="mr-2" />
                       Chat on WhatsApp
@@ -131,7 +161,7 @@ const Contact = () => {
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Full Name</label>
+                        <label className="text-sm font-medium text-foreground">Full Name *</label>
                         <input
                           type="text"
                           name="name"
@@ -143,7 +173,7 @@ const Contact = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Email</label>
+                        <label className="text-sm font-medium text-foreground">Email *</label>
                         <input
                           type="email"
                           name="email"
@@ -163,7 +193,7 @@ const Contact = () => {
                           name="phone"
                           value={formData.phone}
                           onChange={handleChange}
-                          placeholder="+1 234 567 890"
+                          placeholder={siteConfig.phone}
                           className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-smooth"
                         />
                       </div>
@@ -184,7 +214,7 @@ const Contact = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Message</label>
+                      <label className="text-sm font-medium text-foreground">Message *</label>
                       <textarea
                         name="message"
                         value={formData.message}
@@ -195,7 +225,8 @@ const Contact = () => {
                         className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-smooth resize-none"
                       />
                     </div>
-                    <Button size="lg" className="w-full">
+                    <Button size="lg" className="w-full" disabled={loading}>
+                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       <Send size={18} className="mr-2" />
                       Send Message
                     </Button>
