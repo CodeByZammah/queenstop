@@ -1,9 +1,72 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { siteConfig, getWhatsAppLink } from "@/config/siteConfig";
 import heroCar from "@/assets/hero-car.jpg";
+import { Loader2 } from "lucide-react";
 
 const Hero = () => {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    service: "",
+    pickupLocation: "",
+    dropoffLocation: "",
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.email || !formData.phone) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in name, email, and phone.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.from("bookings").insert({
+        customer_name: formData.name,
+        customer_email: formData.email,
+        customer_phone: formData.phone,
+        pickup_location: formData.pickupLocation || null,
+        dropoff_location: formData.dropoffLocation || null,
+        notes: `Service: ${formData.service || "Not specified"}`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Booking Submitted!",
+        description: "We'll get back to you within 24 hours.",
+      });
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        service: "",
+        pickupLocation: "",
+        dropoffLocation: "",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <section className="relative min-h-screen">
       {/* Background Image */}
@@ -32,38 +95,59 @@ const Hero = () => {
 
           {/* Subtitle */}
           <p className="text-background/80 text-base md:text-lg mb-8 opacity-0 animate-fade-up animation-delay-400">
-            Premium car hire, exquisite jewellery, and elegant wedding accessories.
-            Where luxury meets exceptional service.
+            {siteConfig.tagline}. Premium car hire, exquisite jewellery, and elegant wedding accessories.
           </p>
 
           {/* CTA Button */}
           <div className="opacity-0 animate-fade-up animation-delay-600">
-            <Button variant="outline" size="lg" className="rounded-full border-background text-background hover:bg-background hover:text-foreground">
-              Getting Started
-            </Button>
+            <a href={getWhatsAppLink()} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="lg" className="rounded-full border-background text-background hover:bg-background hover:text-foreground">
+                Get Started
+              </Button>
+            </a>
           </div>
         </div>
       </div>
 
       {/* Floating Booking Form */}
       <div className="relative z-20 container mx-auto px-4 -mt-16">
-        <div className="bg-card rounded-xl shadow-elevated p-6 md:p-8 max-w-5xl mx-auto">
+        <form onSubmit={handleSubmit} className="bg-card rounded-xl shadow-elevated p-6 md:p-8 max-w-5xl mx-auto">
           <div className="grid md:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Name</label>
-              <Input placeholder="Your name" className="h-12" />
+              <label className="text-sm font-medium text-muted-foreground">Name *</label>
+              <Input
+                placeholder="Your name"
+                className="h-12"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Email</label>
-              <Input type="email" placeholder="Email address" className="h-12" />
+              <label className="text-sm font-medium text-muted-foreground">Email *</label>
+              <Input
+                type="email"
+                placeholder="Email address"
+                className="h-12"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+              />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Phone</label>
-              <Input type="tel" placeholder="Phone number" className="h-12" />
+              <label className="text-sm font-medium text-muted-foreground">Phone *</label>
+              <Input
+                type="tel"
+                placeholder="Phone number"
+                className="h-12"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                required
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">Service</label>
-              <Select>
+              <Select value={formData.service} onValueChange={(value) => setFormData({ ...formData, service: value })}>
                 <SelectTrigger className="h-12">
                   <SelectValue placeholder="Select Service" />
                 </SelectTrigger>
@@ -78,19 +162,30 @@ const Hero = () => {
           <div className="grid md:grid-cols-3 gap-4 mt-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">Pick Up Address</label>
-              <Input placeholder="Enter location" className="h-12" />
+              <Input
+                placeholder="Enter location"
+                className="h-12"
+                value={formData.pickupLocation}
+                onChange={(e) => setFormData({ ...formData, pickupLocation: e.target.value })}
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">Drop Off Address</label>
-              <Input placeholder="Enter destination" className="h-12" />
+              <Input
+                placeholder="Enter destination"
+                className="h-12"
+                value={formData.dropoffLocation}
+                onChange={(e) => setFormData({ ...formData, dropoffLocation: e.target.value })}
+              />
             </div>
             <div className="flex items-end">
-              <Button size="lg" className="w-full h-12 rounded-lg">
-                Submit
+              <Button type="submit" size="lg" className="w-full h-12 rounded-lg" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Submit Booking
               </Button>
             </div>
           </div>
-        </div>
+        </form>
       </div>
     </section>
   );
