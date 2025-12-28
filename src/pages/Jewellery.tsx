@@ -1,53 +1,11 @@
+import { useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import BookingModal from "@/components/BookingModal";
 import { Button } from "@/components/ui/button";
-import { Gem, Shield, Heart, Star, ShoppingBag, MessageCircle, ArrowRight, Check } from "lucide-react";
+import { Gem, Shield, Heart, Star, ShoppingBag, MessageCircle, ArrowRight, Loader2 } from "lucide-react";
+import { useProducts } from "@/hooks/useProducts";
 import jewelleryImg from "@/assets/jewellery.jpg";
-
-const products = [
-  {
-    name: "Diamond Cascade Necklace",
-    category: "Necklaces",
-    price: "$2,450",
-    description: "18K gold with brilliant cut diamonds",
-    image: jewelleryImg,
-  },
-  {
-    name: "Pearl Drop Earrings",
-    category: "Earrings",
-    price: "$890",
-    description: "South Sea pearls with gold accents",
-    image: jewelleryImg,
-  },
-  {
-    name: "Eternity Band Ring",
-    category: "Rings",
-    price: "$1,650",
-    description: "Platinum with channel-set diamonds",
-    image: jewelleryImg,
-  },
-  {
-    name: "Sapphire Pendant",
-    category: "Pendants",
-    price: "$3,200",
-    description: "Natural sapphire with diamond halo",
-    image: jewelleryImg,
-  },
-  {
-    name: "Gold Tennis Bracelet",
-    category: "Bracelets",
-    price: "$4,100",
-    description: "14K gold with 3ct total diamond weight",
-    image: jewelleryImg,
-  },
-  {
-    name: "Emerald Statement Ring",
-    category: "Rings",
-    price: "$5,800",
-    description: "Colombian emerald in art deco setting",
-    image: jewelleryImg,
-  },
-];
 
 const features = [
   { icon: Shield, title: "Certified Authentic", description: "Every piece comes with certificate of authenticity" },
@@ -57,6 +15,9 @@ const features = [
 ];
 
 const Jewellery = () => {
+  const { products, loading } = useProducts("jewellery");
+  const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string } | null>(null);
+  
   const whatsappNumber = "+1234567890";
   const whatsappMessage = encodeURIComponent("Hello! I'm interested in your jewellery collection.");
   const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
@@ -128,34 +89,55 @@ const Jewellery = () => {
                 Exquisite <span className="text-primary">Pieces</span>
               </h2>
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {products.map((product) => (
-                <div key={product.name} className="bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-elevated transition-elegant group">
-                  <div className="relative h-64 overflow-hidden bg-charcoal">
-                    <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-elegant group-hover:scale-110" />
-                    <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-gold/90 text-charcoal text-xs font-medium">
-                      {product.category}
+            
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : products.length === 0 ? (
+              <p className="text-center text-muted-foreground">No jewellery available at the moment.</p>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {products.map((product) => (
+                  <div key={product.id} className="bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-elevated transition-elegant group">
+                    <div className="relative h-64 overflow-hidden bg-charcoal">
+                      <img 
+                        src={product.image_url || jewelleryImg} 
+                        alt={product.name} 
+                        className="w-full h-full object-cover transition-elegant group-hover:scale-110" 
+                      />
+                      <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-gold/90 text-charcoal text-xs font-medium">
+                        Jewellery
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <h3 className="text-xl font-display font-semibold text-foreground mb-2">{product.name}</h3>
+                      <p className="text-muted-foreground text-sm mb-3">{product.description}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-primary font-bold text-xl">${product.price}</p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="group"
+                          onClick={() => setSelectedProduct({ id: product.id, name: product.name })}
+                        >
+                          Enquire
+                          <ShoppingBag className="ml-2" size={14} />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                  <div className="p-6">
-                    <h3 className="text-xl font-display font-semibold text-foreground mb-2">{product.name}</h3>
-                    <p className="text-muted-foreground text-sm mb-3">{product.description}</p>
-                    <div className="flex items-center justify-between">
-                      <p className="text-primary font-bold text-xl">{product.price}</p>
-                      <Button variant="outline" size="sm" className="group">
-                        Add to Cart
-                        <ShoppingBag className="ml-2" size={14} />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
+            
             <div className="text-center mt-12">
-              <Button size="lg" className="rounded-full">
-                View All Products
-                <ArrowRight className="ml-2" size={18} />
-              </Button>
+              <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                <Button size="lg" className="rounded-full">
+                  View All Products
+                  <ArrowRight className="ml-2" size={18} />
+                </Button>
+              </a>
             </div>
           </div>
         </section>
@@ -180,6 +162,14 @@ const Jewellery = () => {
       </main>
 
       <Footer />
+      
+      <BookingModal
+        isOpen={!!selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+        productName={selectedProduct?.name}
+        productId={selectedProduct?.id}
+        category="jewellery"
+      />
     </div>
   );
 };

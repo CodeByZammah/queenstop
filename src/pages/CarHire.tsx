@@ -1,32 +1,11 @@
+import { useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import BookingModal from "@/components/BookingModal";
 import { Button } from "@/components/ui/button";
-import { Car, Shield, Clock, Award, Users, MapPin, Calendar, Phone, MessageCircle, ArrowRight, Check } from "lucide-react";
+import { Car, Shield, Clock, Award, Users, MapPin, Calendar, Phone, MessageCircle, ArrowRight, Check, Loader2 } from "lucide-react";
+import { useProducts } from "@/hooks/useProducts";
 import heroCar from "@/assets/hero-car.jpg";
-
-const cars = [
-  {
-    name: "Mercedes S-Class",
-    category: "Luxury Sedan",
-    price: "From $150/day",
-    features: ["Leather Interior", "Climate Control", "GPS Navigation", "Chauffeur Available"],
-    image: heroCar,
-  },
-  {
-    name: "BMW 7 Series",
-    category: "Executive",
-    price: "From $180/day",
-    features: ["Premium Sound", "Massage Seats", "WiFi Hotspot", "Chauffeur Available"],
-    image: heroCar,
-  },
-  {
-    name: "Rolls Royce Ghost",
-    category: "Ultra Luxury",
-    price: "From $500/day",
-    features: ["Starlight Ceiling", "Champagne Cooler", "Privacy Glass", "Chauffeur Included"],
-    image: heroCar,
-  },
-];
 
 const features = [
   { icon: Shield, title: "Fully Insured", description: "Comprehensive coverage for peace of mind" },
@@ -36,6 +15,9 @@ const features = [
 ];
 
 const CarHire = () => {
+  const { products: cars, loading } = useProducts("car");
+  const [selectedCar, setSelectedCar] = useState<{ id: string; name: string } | null>(null);
+  
   const whatsappNumber = "+1234567890";
   const whatsappMessage = encodeURIComponent("Hello! I'm interested in booking a car.");
   const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
@@ -148,34 +130,56 @@ const CarHire = () => {
                 Premium <span className="text-primary">Vehicles</span>
               </h2>
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {cars.map((car) => (
-                <div key={car.name} className="bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-elevated transition-elegant group">
-                  <div className="relative h-56 overflow-hidden">
-                    <img src={car.image} alt={car.name} className="w-full h-full object-cover transition-elegant group-hover:scale-110" />
-                    <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-primary/90 text-primary-foreground text-xs font-medium">
-                      {car.category}
+            
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : cars.length === 0 ? (
+              <p className="text-center text-muted-foreground">No vehicles available at the moment.</p>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {cars.map((car) => (
+                  <div key={car.id} className="bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-elevated transition-elegant group">
+                    <div className="relative h-56 overflow-hidden">
+                      <img 
+                        src={car.image_url || heroCar} 
+                        alt={car.name} 
+                        className="w-full h-full object-cover transition-elegant group-hover:scale-110" 
+                      />
+                      <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-primary/90 text-primary-foreground text-xs font-medium">
+                        Car Hire
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <h3 className="text-xl font-display font-semibold text-foreground mb-2">{car.name}</h3>
+                      <p className="text-primary font-bold text-lg mb-4">From ${car.price}/day</p>
+                      {car.features && car.features.length > 0 && (
+                        <ul className="space-y-2 mb-6">
+                          {car.features.slice(0, 4).map((feature, idx) => (
+                            <li key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Check size={16} className="text-primary" />
+                              {feature}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {car.description && !car.features?.length && (
+                        <p className="text-muted-foreground text-sm mb-6">{car.description}</p>
+                      )}
+                      <Button 
+                        variant="outline" 
+                        className="w-full group"
+                        onClick={() => setSelectedCar({ id: car.id, name: car.name })}
+                      >
+                        Book Now
+                        <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={16} />
+                      </Button>
                     </div>
                   </div>
-                  <div className="p-6">
-                    <h3 className="text-xl font-display font-semibold text-foreground mb-2">{car.name}</h3>
-                    <p className="text-primary font-bold text-lg mb-4">{car.price}</p>
-                    <ul className="space-y-2 mb-6">
-                      {car.features.map((feature) => (
-                        <li key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Check size={16} className="text-primary" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                    <Button variant="outline" className="w-full group">
-                      Book Now
-                      <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={16} />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
@@ -199,6 +203,14 @@ const CarHire = () => {
       </main>
 
       <Footer />
+      
+      <BookingModal
+        isOpen={!!selectedCar}
+        onClose={() => setSelectedCar(null)}
+        productName={selectedCar?.name}
+        productId={selectedCar?.id}
+        category="car"
+      />
     </div>
   );
 };

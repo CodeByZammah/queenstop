@@ -1,53 +1,11 @@
+import { useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import BookingModal from "@/components/BookingModal";
 import { Button } from "@/components/ui/button";
-import { Heart, Crown, Sparkles, Gift, ShoppingBag, MessageCircle, ArrowRight } from "lucide-react";
+import { Heart, Crown, Sparkles, Gift, ShoppingBag, MessageCircle, ArrowRight, Loader2 } from "lucide-react";
+import { useProducts } from "@/hooks/useProducts";
 import weddingImg from "@/assets/wedding-accessories.jpg";
-
-const products = [
-  {
-    name: "Crystal Bridal Crown",
-    category: "Crowns & Tiaras",
-    price: "$320",
-    description: "Swarovski crystals with pearl accents",
-    image: weddingImg,
-  },
-  {
-    name: "Cathedral Veil",
-    category: "Veils",
-    price: "$450",
-    description: "French lace trim, 3 meters long",
-    image: weddingImg,
-  },
-  {
-    name: "Pearl Hair Vine",
-    category: "Hair Accessories",
-    price: "$180",
-    description: "Freshwater pearls on gold wire",
-    image: weddingImg,
-  },
-  {
-    name: "Satin Bridal Gloves",
-    category: "Gloves",
-    price: "$95",
-    description: "Elbow length with lace details",
-    image: weddingImg,
-  },
-  {
-    name: "Crystal Drop Earrings",
-    category: "Jewellery",
-    price: "$145",
-    description: "Austrian crystals in silver setting",
-    image: weddingImg,
-  },
-  {
-    name: "Bridal Garter Set",
-    category: "Accessories",
-    price: "$65",
-    description: "Lace with blue ribbon detail",
-    image: weddingImg,
-  },
-];
 
 const categories = [
   { icon: Crown, name: "Crowns & Tiaras", count: "24 items" },
@@ -57,6 +15,9 @@ const categories = [
 ];
 
 const Wedding = () => {
+  const { products, loading } = useProducts("wedding");
+  const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string } | null>(null);
+  
   const whatsappNumber = "+1234567890";
   const whatsappMessage = encodeURIComponent("Hello! I'm interested in your wedding accessories.");
   const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
@@ -126,34 +87,55 @@ const Wedding = () => {
                 Bridal <span className="text-primary">Essentials</span>
               </h2>
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {products.map((product) => (
-                <div key={product.name} className="bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-elevated transition-elegant group">
-                  <div className="relative h-64 overflow-hidden">
-                    <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-elegant group-hover:scale-110" />
-                    <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-gold/90 text-charcoal text-xs font-medium">
-                      {product.category}
+            
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : products.length === 0 ? (
+              <p className="text-center text-muted-foreground">No wedding accessories available at the moment.</p>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {products.map((product) => (
+                  <div key={product.id} className="bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-elevated transition-elegant group">
+                    <div className="relative h-64 overflow-hidden">
+                      <img 
+                        src={product.image_url || weddingImg} 
+                        alt={product.name} 
+                        className="w-full h-full object-cover transition-elegant group-hover:scale-110" 
+                      />
+                      <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-gold/90 text-charcoal text-xs font-medium">
+                        Wedding
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <h3 className="text-xl font-display font-semibold text-foreground mb-2">{product.name}</h3>
+                      <p className="text-muted-foreground text-sm mb-3">{product.description}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-primary font-bold text-xl">${product.price}</p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="group"
+                          onClick={() => setSelectedProduct({ id: product.id, name: product.name })}
+                        >
+                          Enquire
+                          <ShoppingBag className="ml-2" size={14} />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                  <div className="p-6">
-                    <h3 className="text-xl font-display font-semibold text-foreground mb-2">{product.name}</h3>
-                    <p className="text-muted-foreground text-sm mb-3">{product.description}</p>
-                    <div className="flex items-center justify-between">
-                      <p className="text-primary font-bold text-xl">{product.price}</p>
-                      <Button variant="outline" size="sm" className="group">
-                        Add to Cart
-                        <ShoppingBag className="ml-2" size={14} />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
+            
             <div className="text-center mt-12">
-              <Button size="lg" className="rounded-full">
-                View Full Collection
-                <ArrowRight className="ml-2" size={18} />
-              </Button>
+              <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                <Button size="lg" className="rounded-full">
+                  View Full Collection
+                  <ArrowRight className="ml-2" size={18} />
+                </Button>
+              </a>
             </div>
           </div>
         </section>
@@ -178,6 +160,14 @@ const Wedding = () => {
       </main>
 
       <Footer />
+      
+      <BookingModal
+        isOpen={!!selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+        productName={selectedProduct?.name}
+        productId={selectedProduct?.id}
+        category="wedding"
+      />
     </div>
   );
 };
