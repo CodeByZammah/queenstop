@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Plus, LogOut, Car, Gem, Heart, Loader2, Trash2, Edit2, 
-  Eye, Package, Mail, Calendar, X, Save 
+  Package, Mail, Calendar, X, Save, Upload, Image as ImageIcon
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import type { User } from "@supabase/supabase-js";
@@ -71,6 +71,9 @@ const Admin = () => {
     features: "",
     is_available: true,
   });
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -137,6 +140,7 @@ const Admin = () => {
         features: product.features?.join(", ") || "",
         is_available: product.is_available,
       });
+      setImagePreview(product.image_url || null);
     } else {
       setEditingProduct(null);
       setProductForm({
@@ -148,8 +152,52 @@ const Admin = () => {
         features: "",
         is_available: true,
       });
+      setImagePreview(null);
     }
     setShowProductModal(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Error", description: "Please select an image file", variant: "destructive" });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Error", description: "Image must be less than 5MB", variant: "destructive" });
+      return;
+    }
+
+    setUploadingImage(true);
+    
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${productForm.category}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("products")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("products")
+        .getPublicUrl(filePath);
+
+      setProductForm({ ...productForm, image_url: publicUrl });
+      setImagePreview(publicUrl);
+      toast({ title: "Success", description: "Image uploaded!" });
+    } catch (error: any) {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSaveProduct = async () => {
@@ -474,12 +522,60 @@ const Admin = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Image URL</label>
-                <Input
-                  value={productForm.image_url}
-                  onChange={(e) => setProductForm({ ...productForm, image_url: e.target.value })}
-                  placeholder="https://example.com/image.jpg"
+                <label className="text-sm font-medium text-foreground">Product Image</label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  className="hidden"
                 />
+                <div className="flex flex-col gap-3">
+                  {imagePreview ? (
+                    <div className="relative w-full h-40 rounded-lg overflow-hidden bg-muted">
+                      <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImagePreview(null);
+                          setProductForm({ ...productForm, image_url: "" });
+                        }}
+                        className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-40 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
+                    >
+                      {uploadingImage ? (
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      ) : (
+                        <>
+                          <ImageIcon size={32} className="text-muted-foreground mb-2" />
+                          <span className="text-sm text-muted-foreground">Click to upload image</span>
+                          <span className="text-xs text-muted-foreground mt-1">Max 5MB</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImage}
+                  >
+                    {uploadingImage ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Upload size={16} className="mr-2" />
+                    )}
+                    {imagePreview ? "Change Image" : "Upload Image"}
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Features (comma separated)</label>
