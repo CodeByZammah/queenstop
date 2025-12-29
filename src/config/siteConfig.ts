@@ -48,10 +48,23 @@ export const siteConfig = {
     description: "Queenstop offers premium car hire services, exquisite jewellery, and elegant wedding accessories. Experience luxury like never before.",
     keywords: "car hire, luxury cars, jewellery, wedding accessories, premium services",
   },
+
+  // Admin Configuration (for notifications)
+  admin: {
+    email: "admin@queenstop.com",
+    whatsappNumber: "+919992761383",
+    whatsappRaw: "919992761383",
+  },
 };
 
 // Generate WhatsApp link
 export const getWhatsAppLink = (customMessage?: string) => {
   const message = encodeURIComponent(customMessage || siteConfig.whatsappMessage);
   return `https://wa.me/${siteConfig.whatsappNumber}?text=${message}`;
+};
+
+// Generate Admin WhatsApp notification link
+export const getAdminWhatsAppLink = (message: string) => {
+  const encodedMessage = encodeURIComponent(message);
+  return `https://api.whatsapp.com/send?phone=${siteConfig.admin.whatsappRaw}&text=${encodedMessage}`;
 };
