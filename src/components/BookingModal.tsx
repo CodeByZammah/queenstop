@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { siteConfig } from "@/config/siteConfig";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -24,6 +25,27 @@ const BookingModal = ({ isOpen, onClose, productName, productId, category }: Boo
     pickupLocation: "",
     dropoffLocation: "",
   });
+
+  const sendWhatsAppNotification = (bookingDetails: {
+    name: string;
+    email: string;
+    phone: string;
+    product: string;
+    category: string;
+  }) => {
+    const message = `🔔 New Booking Alert!
+
+Customer: ${bookingDetails.name}
+Email: ${bookingDetails.email}
+Phone: ${bookingDetails.phone}
+Product: ${bookingDetails.product}
+Category: ${bookingDetails.category}
+
+Please check the admin panel for full details.`;
+
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${siteConfig.admin.whatsappRaw}&text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, "_blank");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +76,16 @@ const BookingModal = ({ isOpen, onClose, productName, productId, category }: Boo
         title: "Booking Submitted!",
         description: "We'll get back to you within 24 hours.",
       });
+
+      // Send WhatsApp notification to admin
+      sendWhatsAppNotification({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        product: productName || "Not specified",
+        category: category || "Not specified",
+      });
+
       setFormData({
         name: "",
         email: "",
@@ -75,7 +107,7 @@ const BookingModal = ({ isOpen, onClose, productName, productId, category }: Boo
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-display">
             Book {productName || "Now"}

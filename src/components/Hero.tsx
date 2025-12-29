@@ -20,6 +20,25 @@ const Hero = () => {
     dropoffLocation: "",
   });
 
+  const sendWhatsAppNotification = (bookingDetails: {
+    name: string;
+    email: string;
+    phone: string;
+    service: string;
+  }) => {
+    const message = `🔔 New Booking from Homepage!
+
+Customer: ${bookingDetails.name}
+Email: ${bookingDetails.email}
+Phone: ${bookingDetails.phone}
+Service: ${bookingDetails.service}
+
+Please check the admin panel for full details.`;
+
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${siteConfig.admin.whatsappRaw}&text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, "_blank");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.phone) {
@@ -48,6 +67,15 @@ const Hero = () => {
         title: "Booking Submitted!",
         description: "We'll get back to you within 24 hours.",
       });
+
+      // Send WhatsApp notification
+      sendWhatsAppNotification({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        service: formData.service || "Not specified",
+      });
+
       setFormData({
         name: "",
         email: "",
@@ -80,21 +108,21 @@ const Hero = () => {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 pt-48 pb-32">
+      <div className="relative z-10 container mx-auto px-4 pt-36 sm:pt-48 pb-24 sm:pb-32">
         <div className="max-w-xl">
           {/* Badge */}
-          <p className="text-primary font-medium text-sm uppercase tracking-wider mb-4 opacity-0 animate-fade-up">
+          <p className="text-primary font-medium text-xs sm:text-sm uppercase tracking-wider mb-4 opacity-0 animate-fade-up">
             We Are Most Trusted Service
           </p>
 
           {/* Headline */}
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-background leading-tight mb-6 opacity-0 animate-fade-up animation-delay-200">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-background leading-tight mb-6 opacity-0 animate-fade-up animation-delay-200">
             Enjoy Your
             <span className="block text-primary">Comfortable Trip</span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-background/80 text-base md:text-lg mb-8 opacity-0 animate-fade-up animation-delay-400">
+          <p className="text-background/80 text-sm sm:text-base md:text-lg mb-8 opacity-0 animate-fade-up animation-delay-400">
             {siteConfig.tagline}. Premium car hire, exquisite jewellery, and elegant wedding accessories.
           </p>
 
@@ -110,45 +138,45 @@ const Hero = () => {
       </div>
 
       {/* Floating Booking Form */}
-      <div className="relative z-20 container mx-auto px-4 -mt-16">
-        <form onSubmit={handleSubmit} className="bg-card rounded-xl shadow-elevated p-6 md:p-8 max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-4">
+      <div className="relative z-20 container mx-auto px-4 -mt-8 sm:-mt-16">
+        <form onSubmit={handleSubmit} className="bg-card rounded-xl shadow-elevated p-4 sm:p-6 md:p-8 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Name *</label>
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground">Name *</label>
               <Input
                 placeholder="Your name"
-                className="h-12"
+                className="h-10 sm:h-12"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Email *</label>
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground">Email *</label>
               <Input
                 type="email"
                 placeholder="Email address"
-                className="h-12"
+                className="h-10 sm:h-12"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Phone *</label>
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground">Phone *</label>
               <Input
                 type="tel"
                 placeholder="Phone number"
-                className="h-12"
+                className="h-10 sm:h-12"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 required
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Service</label>
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground">Service</label>
               <Select value={formData.service} onValueChange={(value) => setFormData({ ...formData, service: value })}>
-                <SelectTrigger className="h-12">
+                <SelectTrigger className="h-10 sm:h-12">
                   <SelectValue placeholder="Select Service" />
                 </SelectTrigger>
                 <SelectContent>
@@ -159,27 +187,27 @@ const Hero = () => {
               </Select>
             </div>
           </div>
-          <div className="grid md:grid-cols-3 gap-4 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-3 sm:mt-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Pick Up Address</label>
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground">Pick Up Address</label>
               <Input
                 placeholder="Enter location"
-                className="h-12"
+                className="h-10 sm:h-12"
                 value={formData.pickupLocation}
                 onChange={(e) => setFormData({ ...formData, pickupLocation: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Drop Off Address</label>
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground">Drop Off Address</label>
               <Input
                 placeholder="Enter destination"
-                className="h-12"
+                className="h-10 sm:h-12"
                 value={formData.dropoffLocation}
                 onChange={(e) => setFormData({ ...formData, dropoffLocation: e.target.value })}
               />
             </div>
-            <div className="flex items-end">
-              <Button type="submit" size="lg" className="w-full h-12 rounded-lg" disabled={loading}>
+            <div className="flex items-end sm:col-span-2 md:col-span-1">
+              <Button type="submit" size="lg" className="w-full h-10 sm:h-12 rounded-lg" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Submit Booking
               </Button>
