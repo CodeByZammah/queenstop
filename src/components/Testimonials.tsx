@@ -33,9 +33,10 @@ const Testimonials = () => {
   const { data: dbTestimonials } = useQuery({
     queryKey: ["testimonials"],
     queryFn: async () => {
+      // Only select safe columns - exclude email and phone to prevent PII exposure
       const { data, error } = await supabase
         .from("testimonials")
-        .select("*")
+        .select("id, name, role, content, rating, image_url, created_at")
         .order("created_at", { ascending: false })
         .limit(6);
       if (error) throw error;
