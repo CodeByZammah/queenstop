@@ -22,15 +22,17 @@ const Contact = () => {
   const sendWhatsAppNotification = (details: {
     name: string;
     email: string;
+    phone: string;
     message: string;
   }) => {
     const msg = `📩 New Contact Message!
 
 From: ${details.name}
 Email: ${details.email}
-Message: ${details.message.substring(0, 200)}${details.message.length > 200 ? "..." : ""}
+Phone: ${details.phone || "Not provided"}
+Message: ${details.message}
 
-Please check the admin panel for full details.`;
+💬 Reply directly to this customer on WhatsApp: wa.me/${details.phone?.replace(/[^0-9]/g, "") || "N/A"}`;
 
     const whatsappUrl = `https://api.whatsapp.com/send?phone=${siteConfig.admin.whatsappRaw}&text=${encodeURIComponent(msg)}`;
     window.open(whatsappUrl, "_blank");
@@ -68,6 +70,7 @@ Please check the admin panel for full details.`;
       sendWhatsAppNotification({
         name: formData.name,
         email: formData.email,
+        phone: formData.phone,
         message: formData.message,
       });
 

@@ -3,6 +3,7 @@ import Hero from "@/components/Hero";
 import ServiceCards from "@/components/ServiceCards";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import Testimonials from "@/components/Testimonials";
+import TestimonialSubmit from "@/components/TestimonialSubmit";
 import ContactCTA from "@/components/ContactCTA";
 import Footer from "@/components/Footer";
 
@@ -15,6 +16,7 @@ const Index = () => {
         <ServiceCards />
         <WhyChooseUs />
         <Testimonials />
+        <TestimonialSubmit />
         <ContactCTA />
       </main>
       <Footer />

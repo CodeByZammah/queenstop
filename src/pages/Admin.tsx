@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   Plus, LogOut, Car, Gem, Heart, Loader2, Trash2, Edit2, 
   Package, Mail, Calendar, X, Save, Upload, Image as ImageIcon,
-  Check, XCircle, Clock, Eye, EyeOff, MessageSquare, BarChart3
+  Check, XCircle, Clock, Eye, EyeOff, MessageSquare, BarChart3, Star
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import type { User } from "@supabase/supabase-js";
@@ -54,16 +54,28 @@ interface ContactSubmission {
   replied_at: string | null;
 }
 
+interface Testimonial {
+  id: string;
+  name: string;
+  role: string | null;
+  content: string;
+  rating: number;
+  email: string | null;
+  is_approved: boolean;
+  created_at: string;
+}
+
 const Admin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"products" | "bookings" | "contacts" | "analytics">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "bookings" | "contacts" | "testimonials" | "analytics">("products");
   const [activeCategory, setActiveCategory] = useState<ProductCategory>("car");
   const [products, setProducts] = useState<Product[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [contacts, setContacts] = useState<ContactSubmission[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
@@ -129,6 +141,12 @@ const Admin = () => {
       .select("*")
       .order("created_at", { ascending: false });
     if (contactsData) setContacts(contactsData as ContactSubmission[]);
+
+    const { data: testimonialsData } = await supabase
+      .from("testimonials")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (testimonialsData) setTestimonials(testimonialsData as Testimonial[]);
   };
 
   const handleLogout = async () => {
@@ -348,6 +366,34 @@ const Admin = () => {
   const filteredProducts = products.filter((p) => p.category === activeCategory);
   const unreadMessages = contacts.filter(c => !c.is_read).length;
   const pendingBookings = bookings.filter(b => b.status === "pending").length;
+  const pendingTestimonials = testimonials.filter(t => !t.is_approved).length;
+
+  // Testimonial handlers
+  const handleApproveTestimonial = async (id: string, approve: boolean) => {
+    const { error } = await supabase
+      .from("testimonials")
+      .update({ is_approved: approve })
+      .eq("id", id);
+    
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: approve ? "Approved" : "Unapproved", description: `Testimonial ${approve ? "approved" : "unapproved"}` });
+      fetchData();
+    }
+  };
+
+  const handleDeleteTestimonial = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this testimonial?")) return;
+    
+    const { error } = await supabase.from("testimonials").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Deleted", description: "Testimonial removed" });
+      fetchData();
+    }
+  };
 
   const getCategoryIcon = (cat: ProductCategory) => {
     switch (cat) {
@@ -429,6 +475,20 @@ const Admin = () => {
             {unreadMessages > 0 && (
               <span className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center">
                 {unreadMessages}
+              </span>
+            )}
+          </Button>
+          <Button
+            variant={activeTab === "testimonials" ? "default" : "outline"}
+            onClick={() => setActiveTab("testimonials")}
+            size="sm"
+            className="flex-1 sm:flex-none relative"
+          >
+            <Star size={16} className="mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Testimonials</span>
+            {pendingTestimonials > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-500 text-white text-xs rounded-full flex items-center justify-center">
+                {pendingTestimonials}
               </span>
             )}
           </Button>
@@ -649,6 +709,94 @@ const Admin = () => {
             {contacts.length === 0 && (
               <div className="text-center py-12 text-muted-foreground bg-card rounded-xl">
                 No messages yet
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Testimonials Tab */}
+        {activeTab === "testimonials" && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className={pendingTestimonials > 0 ? "border-yellow-500 text-yellow-600" : ""}
+              >
+                Pending: {pendingTestimonials}
+              </Button>
+              <Button variant="outline" size="sm">
+                Approved: {testimonials.filter(t => t.is_approved).length}
+              </Button>
+            </div>
+            
+            {testimonials.map((testimonial) => (
+              <div 
+                key={testimonial.id} 
+                className={`bg-card rounded-xl shadow-card p-4 sm:p-6 ${!testimonial.is_approved ? "border-l-4 border-yellow-500" : "border-l-4 border-green-500"}`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-foreground">{testimonial.name}</h3>
+                      {testimonial.is_approved ? (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Approved</span>
+                      ) : (
+                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Pending</span>
+                      )}
+                    </div>
+                    {testimonial.role && <p className="text-sm text-primary">{testimonial.role}</p>}
+                    {testimonial.email && <p className="text-sm text-muted-foreground">{testimonial.email}</p>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex">
+                      {[...Array(testimonial.rating || 5)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-primary text-primary" />
+                      ))}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(testimonial.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+                
+                <p className="text-muted-foreground mb-4">"{testimonial.content}"</p>
+
+                <div className="flex flex-wrap gap-2">
+                  {testimonial.is_approved ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleApproveTestimonial(testimonial.id, false)}
+                    >
+                      <XCircle size={14} className="mr-1" />
+                      Unapprove
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => handleApproveTestimonial(testimonial.id, true)}
+                    >
+                      <Check size={14} className="mr-1" />
+                      Approve
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDeleteTestimonial(testimonial.id)}
+                    className="ml-auto text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <Trash2 size={14} className="mr-1" />
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {testimonials.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground bg-card rounded-xl">
+                No testimonials submitted yet
               </div>
             )}
           </div>

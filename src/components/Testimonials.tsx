@@ -1,30 +1,53 @@
 import { Star, Quote } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
-const testimonials = [
+const defaultTestimonials = [
   {
+    id: "default-1",
     name: "Sarah Johnson",
     role: "Bride",
     content: "The wedding accessories were absolutely stunning! Every piece was carefully crafted and the service was impeccable. Made my special day even more magical.",
     rating: 5,
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop",
+    image_url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop",
   },
   {
+    id: "default-2",
     name: "Michael Chen",
     role: "Business Executive",
     content: "Queenstop's car hire service is unmatched. The vehicles are immaculate, and the chauffeurs are professional. Perfect for corporate events.",
     rating: 5,
-    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop",
+    image_url: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop",
   },
   {
+    id: "default-3",
     name: "Emily Rodriguez",
     role: "Jewellery Collector",
     content: "The jewellery collection is breathtaking. Each piece tells a story. The quality and craftsmanship exceeded my expectations. Truly elegant!",
     rating: 5,
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop",
+    image_url: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop",
   },
 ];
 
 const Testimonials = () => {
+  const { data: dbTestimonials } = useQuery({
+    queryKey: ["testimonials"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("testimonials")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(6);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Combine DB testimonials with defaults if we have fewer than 3
+  const testimonials = dbTestimonials && dbTestimonials.length >= 3 
+    ? dbTestimonials 
+    : [...(dbTestimonials || []), ...defaultTestimonials].slice(0, 3);
+
   return (
     <section className="py-20 bg-charcoal text-background">
       <div className="container mx-auto px-4">
@@ -46,7 +69,7 @@ const Testimonials = () => {
         <div className="grid md:grid-cols-3 gap-6">
           {testimonials.map((testimonial) => (
             <div
-              key={testimonial.name}
+              key={testimonial.id}
               className="relative p-6 rounded-2xl bg-charcoal-light/50 border border-background/10 hover:border-primary/30 transition-elegant group"
             >
               {/* Quote Icon */}
@@ -54,7 +77,7 @@ const Testimonials = () => {
 
               {/* Rating */}
               <div className="flex gap-1 mb-4">
-                {[...Array(testimonial.rating)].map((_, i) => (
+                {[...Array(testimonial.rating || 5)].map((_, i) => (
                   <Star key={i} className="w-4 h-4 fill-primary text-primary" />
                 ))}
               </div>
@@ -66,14 +89,20 @@ const Testimonials = () => {
 
               {/* Author */}
               <div className="flex items-center gap-3">
-                <img
-                  src={testimonial.image}
-                  alt={testimonial.name}
-                  className="w-10 h-10 rounded-full object-cover border-2 border-primary/30"
-                />
+                {testimonial.image_url ? (
+                  <img
+                    src={testimonial.image_url}
+                    alt={testimonial.name}
+                    className="w-10 h-10 rounded-full object-cover border-2 border-primary/30"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold">
+                    {testimonial.name.charAt(0)}
+                  </div>
+                )}
                 <div>
                   <p className="font-semibold text-background text-sm">{testimonial.name}</p>
-                  <p className="text-primary text-xs">{testimonial.role}</p>
+                  {testimonial.role && <p className="text-primary text-xs">{testimonial.role}</p>}
                 </div>
               </div>
             </div>
