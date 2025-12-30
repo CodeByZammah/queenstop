@@ -7,6 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { siteConfig, getWhatsAppLink } from "@/config/siteConfig";
 import heroCar from "@/assets/hero-car.jpg";
 import { Loader2 } from "lucide-react";
+import { bookingSchema } from "@/lib/validation";
+import { getSafeErrorMessage } from "@/lib/error-handler";
+import { z } from "zod";
 
 const Hero = () => {
   const { toast } = useToast();
@@ -41,23 +44,38 @@ Please check the admin panel for full details.`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.phone) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in name, email, and phone.",
-        variant: "destructive",
-      });
-      return;
+
+    // Validate input using Zod schema
+    const bookingData = {
+      customer_name: formData.name,
+      customer_email: formData.email,
+      customer_phone: formData.phone,
+      pickup_location: formData.pickupLocation || undefined,
+      dropoff_location: formData.dropoffLocation || undefined,
+      notes: `Service: ${formData.service || "Not specified"}`,
+    };
+
+    try {
+      bookingSchema.parse(bookingData);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Validation Error",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setLoading(true);
     try {
       const { error } = await supabase.from("bookings").insert({
-        customer_name: formData.name,
-        customer_email: formData.email,
-        customer_phone: formData.phone,
-        pickup_location: formData.pickupLocation || null,
-        dropoff_location: formData.dropoffLocation || null,
+        customer_name: formData.name.trim(),
+        customer_email: formData.email.trim(),
+        customer_phone: formData.phone.trim(),
+        pickup_location: formData.pickupLocation.trim() || null,
+        dropoff_location: formData.dropoffLocation.trim() || null,
         notes: `Service: ${formData.service || "Not specified"}`,
       });
 
@@ -70,9 +88,9 @@ Please check the admin panel for full details.`;
 
       // Send WhatsApp notification
       sendWhatsAppNotification({
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
         service: formData.service || "Not specified",
       });
 
@@ -84,10 +102,10 @@ Please check the admin panel for full details.`;
         pickupLocation: "",
         dropoffLocation: "",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Something went wrong. Please try again.",
+        description: getSafeErrorMessage(error),
         variant: "destructive",
       });
     } finally {
