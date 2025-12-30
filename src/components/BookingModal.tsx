@@ -6,6 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { siteConfig } from "@/config/siteConfig";
+import { bookingSchema } from "@/lib/validation";
+import { getSafeErrorMessage } from "@/lib/error-handler";
+import { z } from "zod";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -49,24 +52,39 @@ Please check the admin panel for full details.`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.phone) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in name, email, and phone.",
-        variant: "destructive",
-      });
-      return;
+    
+    // Validate input using Zod schema
+    const bookingData = {
+      customer_name: formData.name,
+      customer_email: formData.email,
+      customer_phone: formData.phone,
+      pickup_location: formData.pickupLocation || undefined,
+      dropoff_location: formData.dropoffLocation || undefined,
+      notes: `Product: ${productName || "Not specified"}, Category: ${category || "Not specified"}`,
+    };
+
+    try {
+      bookingSchema.parse(bookingData);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Validation Error",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setLoading(true);
     try {
       const { error } = await supabase.from("bookings").insert({
-        customer_name: formData.name,
-        customer_email: formData.email,
-        customer_phone: formData.phone,
+        customer_name: formData.name.trim(),
+        customer_email: formData.email.trim(),
+        customer_phone: formData.phone.trim(),
         product_id: productId || null,
-        pickup_location: formData.pickupLocation || null,
-        dropoff_location: formData.dropoffLocation || null,
+        pickup_location: formData.pickupLocation.trim() || null,
+        dropoff_location: formData.dropoffLocation.trim() || null,
         notes: `Product: ${productName || "Not specified"}, Category: ${category || "Not specified"}`,
       });
 
@@ -79,9 +97,9 @@ Please check the admin panel for full details.`;
 
       // Send WhatsApp notification to admin
       sendWhatsAppNotification({
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
         product: productName || "Not specified",
         category: category || "Not specified",
       });
@@ -94,10 +112,10 @@ Please check the admin panel for full details.`;
         dropoffLocation: "",
       });
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Something went wrong. Please try again.",
+        description: getSafeErrorMessage(error),
         variant: "destructive",
       });
     } finally {

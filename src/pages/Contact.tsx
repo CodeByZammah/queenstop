@@ -7,6 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { siteConfig, getWhatsAppLink } from "@/config/siteConfig";
 import { Loader2 } from "lucide-react";
+import { contactSchema } from "@/lib/validation";
+import { getSafeErrorMessage } from "@/lib/error-handler";
+import { z } from "zod";
 
 const Contact = () => {
   const { toast } = useToast();
@@ -40,23 +43,37 @@ Message: ${details.message}
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.message) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
-      return;
+
+    // Validate input using Zod schema
+    const contactData = {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone || undefined,
+      subject: formData.service || undefined,
+      message: formData.message,
+    };
+
+    try {
+      contactSchema.parse(contactData);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Validation Error",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setLoading(true);
     try {
       const { error } = await supabase.from("contact_submissions").insert({
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone || null,
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim() || null,
         subject: formData.service || null,
-        message: formData.message,
+        message: formData.message.trim(),
       });
 
       if (error) throw error;
@@ -68,17 +85,17 @@ Message: ${details.message}
 
       // Send WhatsApp notification
       sendWhatsAppNotification({
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        message: formData.message,
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        message: formData.message.trim(),
       });
 
       setFormData({ name: "", email: "", phone: "", service: "", message: "" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Something went wrong",
+        description: getSafeErrorMessage(error),
         variant: "destructive",
       });
     } finally {

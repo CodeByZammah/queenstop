@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Star, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { testimonialSchema } from "@/lib/validation";
+import { getSafeErrorMessage } from "@/lib/error-handler";
+import { z } from "zod";
 
 const TestimonialSubmit = () => {
   const { toast } = useToast();
@@ -18,23 +21,37 @@ const TestimonialSubmit = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.content) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in your name and testimonial.",
-        variant: "destructive",
-      });
-      return;
+
+    // Validate input using Zod schema
+    const testimonialData = {
+      name: formData.name,
+      role: formData.role || undefined,
+      content: formData.content,
+      rating,
+      email: formData.email || undefined,
+    };
+
+    try {
+      testimonialSchema.parse(testimonialData);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Validation Error",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setLoading(true);
     try {
       const { error } = await supabase.from("testimonials").insert({
-        name: formData.name,
-        role: formData.role || null,
-        content: formData.content,
+        name: formData.name.trim(),
+        role: formData.role.trim() || null,
+        content: formData.content.trim(),
         rating,
-        email: formData.email || null,
+        email: formData.email.trim() || null,
       });
 
       if (error) throw error;
@@ -46,10 +63,10 @@ const TestimonialSubmit = () => {
 
       setFormData({ name: "", role: "", content: "", email: "" });
       setRating(5);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Something went wrong",
+        description: getSafeErrorMessage(error),
         variant: "destructive",
       });
     } finally {

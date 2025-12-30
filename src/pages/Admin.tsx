@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import type { User } from "@supabase/supabase-js";
+import { getSafeErrorMessage } from "@/lib/error-handler";
 
 type ProductCategory = "car" | "jewellery" | "wedding";
 type BookingStatus = "pending" | "completed" | "cancelled";
@@ -105,6 +106,25 @@ const Admin = () => {
         navigate("/auth");
         return;
       }
+
+      // Check if user has admin role
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .single();
+      
+      if (roleError || roleData?.role !== 'admin') {
+        toast({
+          title: "Access Denied",
+          description: "You don't have permission to access this area.",
+          variant: "destructive"
+        });
+        await supabase.auth.signOut();
+        navigate('/');
+        return;
+      }
+
       setUser(session.user);
       setLoading(false);
       fetchData();
@@ -121,7 +141,7 @@ const Admin = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, toast]);
 
   const fetchData = async () => {
     const { data: productsData } = await supabase
@@ -256,8 +276,8 @@ const Admin = () => {
       }
       setShowProductModal(false);
       fetchData();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -268,7 +288,7 @@ const Admin = () => {
     
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
     } else {
       toast({ title: "Deleted", description: "Product removed" });
       fetchData();
@@ -283,7 +303,7 @@ const Admin = () => {
       .eq("id", id);
     
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
     } else {
       toast({ title: "Updated", description: `Booking marked as ${status}` });
       fetchData();
@@ -296,7 +316,7 @@ const Admin = () => {
     
     const { error } = await supabase.from("bookings").delete().eq("id", id);
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
     } else {
       toast({ title: "Deleted", description: "Booking removed" });
       fetchData();
@@ -311,7 +331,7 @@ const Admin = () => {
       .eq("id", id);
     
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
     } else {
       fetchData();
     }
@@ -323,7 +343,7 @@ const Admin = () => {
     
     const { error } = await supabase.from("contact_submissions").delete().eq("id", id);
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
     } else {
       toast({ title: "Deleted", description: "Message removed" });
       fetchData();
@@ -352,7 +372,7 @@ const Admin = () => {
       .eq("id", replyingTo.id);
     
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
     } else {
       toast({ title: "Reply Saved", description: "Your reply has been saved" });
       setReplyModalOpen(false);
@@ -376,7 +396,7 @@ const Admin = () => {
       .eq("id", id);
     
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
     } else {
       toast({ title: approve ? "Approved" : "Unapproved", description: `Testimonial ${approve ? "approved" : "unapproved"}` });
       fetchData();
@@ -388,7 +408,7 @@ const Admin = () => {
     
     const { error } = await supabase.from("testimonials").delete().eq("id", id);
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
     } else {
       toast({ title: "Deleted", description: "Testimonial removed" });
       fetchData();

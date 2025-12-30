@@ -6,17 +6,16 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { getSafeErrorMessage } from "@/lib/error-handler";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    confirmPassword: "",
   });
 
   useEffect(() => {
@@ -43,35 +42,16 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-        if (error) throw error;
-        toast({ title: "Welcome back!", description: "Login successful." });
-      } else {
-        if (formData.password !== formData.confirmPassword) {
-          throw new Error("Passwords do not match");
-        }
-        if (formData.password.length < 6) {
-          throw new Error("Password must be at least 6 characters");
-        }
-        const { error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/admin`,
-          },
-        });
-        if (error) throw error;
-        toast({ title: "Account created!", description: "You can now log in." });
-        setIsLogin(true);
-      }
-    } catch (error: any) {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+      if (error) throw error;
+      toast({ title: "Welcome back!", description: "Login successful." });
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Something went wrong",
+        description: getSafeErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -87,10 +67,10 @@ const Auth = () => {
           <div className="text-center mb-8">
             <img src={logo} alt="Queenstop" className="h-12 mx-auto mb-4" />
             <h1 className="text-2xl font-display font-bold text-foreground">
-              {isLogin ? "Admin Login" : "Create Account"}
+              Admin Login
             </h1>
             <p className="text-muted-foreground mt-2">
-              {isLogin ? "Sign in to manage your business" : "Register for admin access"}
+              Sign in to manage your business
             </p>
           </div>
 
@@ -129,35 +109,17 @@ const Auth = () => {
               </div>
             </div>
 
-            {!isLogin && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Confirm Password</label>
-                <Input
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  required
-                  className="h-12"
-                />
-              </div>
-            )}
-
             <Button type="submit" size="lg" className="w-full" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLogin ? "Sign In" : "Create Account"}
+              Sign In
             </Button>
           </form>
 
-          {/* Toggle */}
+          {/* Contact admin notice */}
           <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-muted-foreground hover:text-primary transition-smooth"
-            >
-              {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-            </button>
+            <p className="text-sm text-muted-foreground">
+              Need access? Contact the administrator.
+            </p>
           </div>
         </div>
       </div>
