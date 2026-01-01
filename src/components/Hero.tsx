@@ -24,12 +24,15 @@ const Hero = () => {
     dropoffLocation: "",
   });
 
-  const sendWhatsAppNotification = (bookingDetails: {
+  const sendNotifications = async (bookingDetails: {
     name: string;
     email: string;
     phone: string;
     service: string;
+    pickupLocation?: string;
+    dropoffLocation?: string;
   }) => {
+    // Send WhatsApp notification
     const message = `🔔 New Booking from Homepage!
 
 Customer: ${bookingDetails.name}
@@ -41,6 +44,25 @@ Please check the admin panel for full details.`;
 
     const whatsappUrl = `https://api.whatsapp.com/send?phone=${siteConfig.admin.whatsappRaw}&text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, "_blank");
+
+    // Send email notification
+    try {
+      await supabase.functions.invoke("send-notification", {
+        body: {
+          type: "booking",
+          data: {
+            customer_name: bookingDetails.name,
+            customer_email: bookingDetails.email,
+            customer_phone: bookingDetails.phone,
+            service: bookingDetails.service,
+            pickup_location: bookingDetails.pickupLocation,
+            dropoff_location: bookingDetails.dropoffLocation,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Failed to send email notification:", error);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,12 +109,14 @@ Please check the admin panel for full details.`;
         description: "We'll get back to you within 24 hours.",
       });
 
-      // Send WhatsApp notification
-      sendWhatsAppNotification({
+      // Send WhatsApp and email notifications
+      sendNotifications({
         name: formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         service: formData.service || "Not specified",
+        pickupLocation: formData.pickupLocation.trim(),
+        dropoffLocation: formData.dropoffLocation.trim(),
       });
 
       setFormData({

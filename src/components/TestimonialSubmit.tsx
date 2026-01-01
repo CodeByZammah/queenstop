@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { testimonialSchema } from "@/lib/validation";
 import { getSafeErrorMessage } from "@/lib/error-handler";
 import { z } from "zod";
+import { siteConfig } from "@/config/siteConfig";
 
 const TestimonialSubmit = () => {
   const { toast } = useToast();
@@ -60,6 +61,37 @@ const TestimonialSubmit = () => {
         title: "Thank You!",
         description: "Your testimonial has been submitted for review.",
       });
+
+      // Send WhatsApp notification
+      const message = `✨ New Testimonial Submitted!
+
+From: ${formData.name.trim()}
+${formData.role ? `Role: ${formData.role.trim()}` : ""}
+Rating: ${"⭐".repeat(rating)} (${rating}/5)
+Testimonial: "${formData.content.trim()}"
+
+Review and approve in the admin panel.`;
+
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${siteConfig.admin.whatsappRaw}&text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, "_blank");
+
+      // Send email notification
+      try {
+        await supabase.functions.invoke("send-notification", {
+          body: {
+            type: "testimonial",
+            data: {
+              name: formData.name.trim(),
+              role: formData.role.trim(),
+              email: formData.email.trim(),
+              rating,
+              content: formData.content.trim(),
+            },
+          },
+        });
+      } catch (emailError) {
+        console.error("Failed to send email notification:", emailError);
+      }
 
       setFormData({ name: "", role: "", content: "", email: "" });
       setRating(5);
