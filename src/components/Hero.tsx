@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { siteConfig, getWhatsAppLink } from "@/config/siteConfig";
-import heroCar from "@/assets/hero-car.jpg";
+import HeroCarousel from "@/components/HeroCarousel";
 import { Loader2 } from "lucide-react";
 import { bookingSchema } from "@/lib/validation";
 import { getSafeErrorMessage } from "@/lib/error-handler";
@@ -115,15 +115,8 @@ Please check the admin panel for full details.`;
 
   return (
     <section className="relative min-h-screen">
-      {/* Background Image */}
-      <div className="absolute inset-0">
-        <img
-          src={heroCar}
-          alt="Luxury car hire service"
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-charcoal/80 via-charcoal/50 to-transparent" />
-      </div>
+      {/* Background Media Carousel */}
+      <HeroCarousel />
 
       {/* Content */}
       <div className="relative z-10 container mx-auto px-4 pt-36 sm:pt-48 pb-24 sm:pb-32">
