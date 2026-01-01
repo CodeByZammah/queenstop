@@ -22,12 +22,14 @@ const Contact = () => {
     message: "",
   });
 
-  const sendWhatsAppNotification = (details: {
+  const sendNotifications = async (details: {
     name: string;
     email: string;
     phone: string;
+    subject?: string;
     message: string;
   }) => {
+    // Send WhatsApp notification
     const msg = `📩 New Contact Message!
 
 From: ${details.name}
@@ -39,6 +41,24 @@ Message: ${details.message}
 
     const whatsappUrl = `https://api.whatsapp.com/send?phone=${siteConfig.admin.whatsappRaw}&text=${encodeURIComponent(msg)}`;
     window.open(whatsappUrl, "_blank");
+
+    // Send email notification
+    try {
+      await supabase.functions.invoke("send-notification", {
+        body: {
+          type: "contact",
+          data: {
+            name: details.name,
+            email: details.email,
+            phone: details.phone,
+            subject: details.subject,
+            message: details.message,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Failed to send email notification:", error);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -83,11 +103,12 @@ Message: ${details.message}
         description: "We'll get back to you within 24 hours.",
       });
 
-      // Send WhatsApp notification
-      sendWhatsAppNotification({
+      // Send WhatsApp and email notifications
+      sendNotifications({
         name: formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim(),
+        subject: formData.service,
         message: formData.message.trim(),
       });
 
