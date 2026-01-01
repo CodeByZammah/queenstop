@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { siteConfig, getWhatsAppLink } from "@/config/siteConfig";
-import HeroCarousel from "@/components/HeroCarousel";
+import HeroCarousel, { MediaItem, defaultMediaItems } from "@/components/HeroCarousel";
 import { Loader2 } from "lucide-react";
 import { bookingSchema } from "@/lib/validation";
 import { getSafeErrorMessage } from "@/lib/error-handler";
@@ -14,6 +14,7 @@ import { z } from "zod";
 const Hero = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState<MediaItem>(defaultMediaItems[0]);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -113,34 +114,44 @@ Please check the admin panel for full details.`;
     }
   };
 
+  const handleSlideChange = (_index: number, item: MediaItem) => {
+    setCurrentSlide(item);
+  };
+
   return (
     <section className="relative min-h-screen">
       {/* Background Media Carousel */}
-      <HeroCarousel />
+      <HeroCarousel onSlideChange={handleSlideChange} />
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 pt-36 sm:pt-48 pb-24 sm:pb-32">
+      <div className="relative z-30 container mx-auto px-4 pt-36 sm:pt-48 pb-24 sm:pb-32">
         <div className="max-w-xl">
           {/* Badge */}
-          <p className="text-primary font-medium text-xs sm:text-sm uppercase tracking-wider mb-4 opacity-0 animate-fade-up">
+          <p className="text-primary font-semibold text-xs sm:text-sm uppercase tracking-wider mb-4 drop-shadow-lg">
             We Are Most Trusted Service
           </p>
 
-          {/* Headline */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-background leading-tight mb-6 opacity-0 animate-fade-up animation-delay-200">
-            Enjoy Your
-            <span className="block text-primary">Comfortable Trip</span>
+          {/* Dynamic Headline */}
+          <h1 
+            key={currentSlide.headline} 
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6 drop-shadow-xl animate-fade-in"
+          >
+            {currentSlide.headline}
+            <span className="block text-primary drop-shadow-lg">{currentSlide.highlightText}</span>
           </h1>
 
-          {/* Subtitle */}
-          <p className="text-background/80 text-sm sm:text-base md:text-lg mb-8 opacity-0 animate-fade-up animation-delay-400">
-            {siteConfig.tagline}. Premium car hire, exquisite jewellery, and elegant wedding accessories.
+          {/* Dynamic Subtitle */}
+          <p 
+            key={currentSlide.subtitle}
+            className="text-white text-sm sm:text-base md:text-lg mb-8 drop-shadow-lg animate-fade-in"
+          >
+            {currentSlide.subtitle}
           </p>
 
           {/* CTA Button */}
-          <div className="opacity-0 animate-fade-up animation-delay-600">
+          <div>
             <a href={getWhatsAppLink()} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="lg" className="rounded-full border-background text-background hover:bg-background hover:text-foreground">
+              <Button variant="outline" size="lg" className="rounded-full border-white text-white hover:bg-white hover:text-foreground font-semibold shadow-lg">
                 Get Started
               </Button>
             </a>
