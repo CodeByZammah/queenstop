@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,6 +9,7 @@ import { siteConfig } from "@/config/siteConfig";
 import { bookingSchema } from "@/lib/validation";
 import { getSafeErrorMessage } from "@/lib/error-handler";
 import { z } from "zod";
+import type { User } from "@supabase/supabase-js";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -18,9 +19,18 @@ interface BookingModalProps {
   category?: string;
 }
 
+interface ClientProfile {
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  default_pickup_location: string | null;
+  default_dropoff_location: string | null;
+}
+
 const BookingModal = ({ isOpen, onClose, productName, productId, category }: BookingModalProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -28,6 +38,42 @@ const BookingModal = ({ isOpen, onClose, productName, productId, category }: Boo
     pickupLocation: "",
     dropoffLocation: "",
   });
+
+  // Load user profile data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadUserProfile();
+    }
+  }, [isOpen]);
+
+  const loadUserProfile = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      setUser(session.user);
+      
+      // Fetch profile data
+      const { data: profile } = await supabase
+        .from("client_profiles")
+        .select("full_name, email, phone, default_pickup_location, default_dropoff_location")
+        .eq("user_id", session.user.id)
+        .single();
+
+      if (profile) {
+        setFormData({
+          name: profile.full_name || "",
+          email: profile.email || session.user.email || "",
+          phone: profile.phone || "",
+          pickupLocation: profile.default_pickup_location || "",
+          dropoffLocation: profile.default_dropoff_location || "",
+        });
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          email: session.user.email || "",
+        }));
+      }
+    }
+  };
 
   const sendWhatsAppNotification = (bookingDetails: {
     name: string;
@@ -86,6 +132,7 @@ Please check the admin panel for full details.`;
         pickup_location: formData.pickupLocation.trim() || null,
         dropoff_location: formData.dropoffLocation.trim() || null,
         notes: `Product: ${productName || "Not specified"}, Category: ${category || "Not specified"}`,
+        user_id: user?.id || null, // Link booking to logged-in user
       });
 
       if (error) throw error;
