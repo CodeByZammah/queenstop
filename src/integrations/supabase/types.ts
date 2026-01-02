@@ -28,6 +28,7 @@ export type Database = {
           pickup_location: string | null
           product_id: string | null
           status: string | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -42,6 +43,7 @@ export type Database = {
           pickup_location?: string | null
           product_id?: string | null
           status?: string | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -56,6 +58,7 @@ export type Database = {
           pickup_location?: string | null
           product_id?: string | null
           status?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -66,6 +69,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      client_profiles: {
+        Row: {
+          created_at: string
+          default_dropoff_location: string | null
+          default_pickup_location: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_dropoff_location?: string | null
+          default_pickup_location?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_dropoff_location?: string | null
+          default_pickup_location?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       contact_submissions: {
         Row: {

@@ -1,21 +1,37 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X, Phone, Mail, MapPin } from "lucide-react";
+import { Menu, X, Phone, Mail, MapPin, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/siteConfig";
+import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 const Header = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
     };
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+
+    // Check auth state
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const navLinks = [
@@ -29,6 +45,15 @@ const Header = () => {
 
   const handleBookingClick = () => {
     navigate("/contact");
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleAccountClick = () => {
+    if (user) {
+      navigate("/account");
+    } else {
+      navigate("/login");
+    }
     setIsMobileMenuOpen(false);
   };
 
@@ -95,8 +120,17 @@ const Header = () => {
               ))}
             </div>
 
-            {/* CTA Button */}
-            <div className="hidden lg:flex items-center">
+            {/* CTA Buttons */}
+            <div className="hidden lg:flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="rounded-full"
+                onClick={handleAccountClick}
+              >
+                <User className="mr-2 h-4 w-4" />
+                {user ? "Account" : "Login"}
+              </Button>
               <Button variant="default" size="lg" className="rounded-full px-6 xl:px-8" onClick={handleBookingClick}>
                 Book Now
               </Button>
@@ -134,6 +168,15 @@ const Header = () => {
                 {link.name}
               </Link>
             ))}
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="mt-2 rounded-full" 
+              onClick={handleAccountClick}
+            >
+              <User className="mr-2 h-4 w-4" />
+              {user ? "My Account" : "Login / Sign Up"}
+            </Button>
             <Button variant="default" size="lg" className="mt-3 sm:mt-4 rounded-full" onClick={handleBookingClick}>
               Book Now
             </Button>
