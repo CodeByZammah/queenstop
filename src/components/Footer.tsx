@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from "lucide-react";
 import logo from "@/assets/logo.png";
+import { siteConfig } from "@/config/siteConfig";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -102,18 +103,30 @@ const Footer = () => {
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <MapPin size={18} className="text-primary mt-0.5 flex-shrink-0" />
-                <span className="text-background/70">123 Luxury Avenue, New York, NY 10001</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Phone size={18} className="text-primary flex-shrink-0" />
-                <a href="tel:+1234567890" className="text-background/70 hover:text-primary transition-smooth">
-                  +1 234 567 890
+                <a 
+                  href={siteConfig.address.mapUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-background/70 hover:text-primary transition-smooth"
+                >
+                  {siteConfig.address.full}
                 </a>
+              </li>
+              <li className="flex items-start gap-3">
+                <Phone size={18} className="text-primary mt-0.5 flex-shrink-0" />
+                <div className="flex flex-col">
+                  <a href={`tel:${siteConfig.phoneRaw}`} className="text-background/70 hover:text-primary transition-smooth">
+                    {siteConfig.phone}
+                  </a>
+                  <a href="tel:+260974366406" className="text-background/70 hover:text-primary transition-smooth">
+                    {siteConfig.phoneSecondary}
+                  </a>
+                </div>
               </li>
               <li className="flex items-center gap-3">
                 <Mail size={18} className="text-primary flex-shrink-0" />
-                <a href="mailto:hello@queenstop.com" className="text-background/70 hover:text-primary transition-smooth">
-                  hello@queenstop.com
+                <a href={`mailto:${siteConfig.email}`} className="text-background/70 hover:text-primary transition-smooth">
+                  {siteConfig.email}
                 </a>
               </li>
             </ul>

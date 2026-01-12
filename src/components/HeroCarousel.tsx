@@ -109,9 +109,14 @@ const HeroCarousel = ({
         <div
           key={index}
           className={cn(
-            "absolute inset-0 transition-opacity duration-1000 ease-in-out",
-            index === currentIndex ? "opacity-100 z-10" : "opacity-0 z-0"
+            "absolute inset-0 transition-all duration-[1500ms] ease-out",
+            index === currentIndex 
+              ? "opacity-100 z-10 scale-100" 
+              : "opacity-0 z-0 scale-105"
           )}
+          style={{
+            transitionTimingFunction: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+          }}
         >
           {item.type === "video" ? (
             <video
@@ -121,13 +126,25 @@ const HeroCarousel = ({
               loop
               muted
               playsInline
-              className="w-full h-full object-cover"
+              className={cn(
+                "w-full h-full object-cover transition-transform duration-[2000ms]",
+                index === currentIndex ? "scale-100" : "scale-110"
+              )}
+              style={{
+                transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
             />
           ) : (
             <img
               src={item.src}
               alt={item.alt || `Slide ${index + 1}`}
-              className="w-full h-full object-cover"
+              className={cn(
+                "w-full h-full object-cover transition-transform duration-[2000ms]",
+                index === currentIndex ? "scale-100" : "scale-110"
+              )}
+              style={{
+                transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
             />
           )}
         </div>

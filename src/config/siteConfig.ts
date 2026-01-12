@@ -10,22 +10,24 @@ export const siteConfig = {
   tagline: "Where Luxury Meets Exceptional Service",
   
   // Contact Information
-  phone: "+1 234 567 890",
-  phoneRaw: "+1234567890", // For links (no spaces)
-  email: "hello@queenstop.com",
+  phone: "+260 97 6700776",
+  phoneSecondary: "+260 974366406",
+  phoneRaw: "+260976700776", // For links (no spaces)
+  email: "queenstopdrive@gmail.com",
   
   // WhatsApp
-  whatsappNumber: "+1234567890",
+  whatsappNumber: "+260976700776",
   whatsappMessage: "Hello! I'd like to get in touch with Queenstop.",
   
   // Address
   address: {
-    street: "123 Luxury Avenue",
-    city: "New York",
-    state: "NY",
-    zip: "10001",
-    country: "USA",
-    full: "123 Luxury Avenue, New York, NY 10001",
+    street: "A/35/2, Makeni Bonaventure, plot 50a",
+    city: "Lusaka",
+    state: "",
+    zip: "10101",
+    country: "Zambia",
+    full: "A/35/2, Makeni Bonaventure, plot 50a, Lusaka 10101, Zambia",
+    mapUrl: "https://share.google/JFo59tJ7goMUxCO9b",
   },
   
   // Business Hours
@@ -51,9 +53,9 @@ export const siteConfig = {
 
   // Admin Configuration (for notifications)
   admin: {
-    email: "admin@queenstop.com",
-    whatsappNumber: "+919992761383",
-    whatsappRaw: "919992761383",
+    email: "queenstopdrive@gmail.com",
+    whatsappNumber: "+260976700776",
+    whatsappRaw: "260976700776",
   },
 };
 
