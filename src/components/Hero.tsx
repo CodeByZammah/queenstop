@@ -221,7 +221,7 @@ Please check the admin panel for full details.`;
             </div>
             <div className="space-y-2">
               <label className="text-xs sm:text-sm font-medium text-muted-foreground">Service</label>
-              <Select value={formData.service} onValueChange={(value) => setFormData({ ...formData, service: value })}>
+              <Select value={formData.service} onValueChange={(value) => setFormData({ ...formData, service: value, pickupLocation: "", dropoffLocation: "" })}>
                 <SelectTrigger className="h-10 sm:h-12">
                   <SelectValue placeholder="Select Service" />
                 </SelectTrigger>
@@ -233,31 +233,36 @@ Please check the admin panel for full details.`;
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-3 sm:mt-4">
-            <div className="space-y-2">
-              <label className="text-xs sm:text-sm font-medium text-muted-foreground">Pick Up Address</label>
-              <Input
-                placeholder="Enter location"
-                className="h-10 sm:h-12"
-                value={formData.pickupLocation}
-                onChange={(e) => setFormData({ ...formData, pickupLocation: e.target.value })}
-              />
+          
+          {/* Car Hire specific fields - only show for car-hire */}
+          {formData.service === "car-hire" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
+              <div className="space-y-2">
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground">Pick Up Address</label>
+                <Input
+                  placeholder="Enter pickup location"
+                  className="h-10 sm:h-12"
+                  value={formData.pickupLocation}
+                  onChange={(e) => setFormData({ ...formData, pickupLocation: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground">Drop Off Address</label>
+                <Input
+                  placeholder="Enter drop off location"
+                  className="h-10 sm:h-12"
+                  value={formData.dropoffLocation}
+                  onChange={(e) => setFormData({ ...formData, dropoffLocation: e.target.value })}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-xs sm:text-sm font-medium text-muted-foreground">Drop Off Address</label>
-              <Input
-                placeholder="Enter destination"
-                className="h-10 sm:h-12"
-                value={formData.dropoffLocation}
-                onChange={(e) => setFormData({ ...formData, dropoffLocation: e.target.value })}
-              />
-            </div>
-            <div className="flex items-end sm:col-span-2 md:col-span-1">
-              <Button type="submit" size="lg" className="w-full h-10 sm:h-12 rounded-lg" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Submit Booking
-              </Button>
-            </div>
+          )}
+          
+          <div className="mt-3 sm:mt-4">
+            <Button type="submit" size="lg" className="w-full sm:w-auto h-10 sm:h-12 rounded-lg px-8" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {formData.service === "car-hire" ? "Book Now" : formData.service ? "Submit Enquiry" : "Get Started"}
+            </Button>
           </div>
         </form>
       </div>

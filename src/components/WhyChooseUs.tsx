@@ -6,7 +6,6 @@ const features = [
     title: "Performant & Powerful",
     description: "Premium quality services at competitive prices with flexible packages.",
     variant: "yellow" as const,
-    badges: ["PayPal", "Visa", "Mastercard"],
   },
   {
     icon: Shield,
@@ -74,19 +73,6 @@ const WhyChooseUs = () => {
                 {feature.description}
               </p>
 
-              {/* Badges */}
-              {feature.badges && (
-                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-current/20">
-                  {feature.badges.map((badge) => (
-                    <span
-                      key={badge}
-                      className="text-xs font-medium px-2 py-1 rounded bg-background/20"
-                    >
-                      {badge}
-                    </span>
-                  ))}
-                </div>
-              )}
 
               {/* Guarantees */}
               {feature.guarantees && (

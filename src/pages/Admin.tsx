@@ -7,7 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   Plus, LogOut, Car, Gem, Heart, Loader2, Trash2, Edit2, 
   Package, Mail, Calendar, X, Save, Upload, Image as ImageIcon,
-  Check, XCircle, Clock, Eye, EyeOff, MessageSquare, BarChart3, Star
+  Check, XCircle, Clock, Eye, EyeOff, MessageSquare, BarChart3, Star,
+  Settings, Key
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import type { User } from "@supabase/supabase-js";
@@ -62,6 +63,7 @@ interface Testimonial {
   content: string;
   rating: number;
   email: string | null;
+  image_url: string | null;
   is_approved: boolean;
   created_at: string;
 }
@@ -71,7 +73,7 @@ const Admin = () => {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"products" | "bookings" | "contacts" | "testimonials" | "analytics">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "bookings" | "contacts" | "testimonials" | "analytics" | "settings">("products");
   const [activeCategory, setActiveCategory] = useState<ProductCategory>("car");
   const [products, setProducts] = useState<Product[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -98,6 +100,26 @@ const Admin = () => {
   const [replyingTo, setReplyingTo] = useState<ContactSubmission | null>(null);
   const [replyText, setReplyText] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
+
+  // Testimonial modal state
+  const [showTestimonialModal, setShowTestimonialModal] = useState(false);
+  const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null);
+  const [testimonialForm, setTestimonialForm] = useState({
+    name: "",
+    role: "",
+    content: "",
+    rating: 5,
+    image_url: "",
+    is_approved: true,
+  });
+
+  // Password change state
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -389,6 +411,69 @@ const Admin = () => {
   const pendingTestimonials = testimonials.filter(t => !t.is_approved).length;
 
   // Testimonial handlers
+  const openTestimonialModal = (testimonial?: Testimonial) => {
+    if (testimonial) {
+      setEditingTestimonial(testimonial);
+      setTestimonialForm({
+        name: testimonial.name,
+        role: testimonial.role || "",
+        content: testimonial.content,
+        rating: testimonial.rating || 5,
+        image_url: testimonial.image_url || "",
+        is_approved: testimonial.is_approved,
+      });
+    } else {
+      setEditingTestimonial(null);
+      setTestimonialForm({
+        name: "",
+        role: "",
+        content: "",
+        rating: 5,
+        image_url: "",
+        is_approved: true,
+      });
+    }
+    setShowTestimonialModal(true);
+  };
+
+  const handleSaveTestimonial = async () => {
+    if (!testimonialForm.name || !testimonialForm.content) {
+      toast({ title: "Error", description: "Name and content are required", variant: "destructive" });
+      return;
+    }
+
+    setSaving(true);
+    const testimonialData = {
+      name: testimonialForm.name,
+      role: testimonialForm.role || null,
+      content: testimonialForm.content,
+      rating: testimonialForm.rating,
+      image_url: testimonialForm.image_url || null,
+      is_approved: testimonialForm.is_approved,
+    };
+
+    try {
+      if (editingTestimonial) {
+        const { error } = await supabase
+          .from("testimonials")
+          .update(testimonialData)
+          .eq("id", editingTestimonial.id);
+        if (error) throw error;
+        toast({ title: "Success", description: "Testimonial updated!" });
+      } else {
+        const { error } = await supabase.from("testimonials").insert(testimonialData);
+        if (error) throw error;
+        toast({ title: "Success", description: "Testimonial added!" });
+      }
+      setShowTestimonialModal(false);
+      fetchData();
+    } catch (error: unknown) {
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleApproveTestimonial = async (id: string, approve: boolean) => {
     const { error } = await supabase
       .from("testimonials")
@@ -412,6 +497,40 @@ const Admin = () => {
     } else {
       toast({ title: "Deleted", description: "Testimonial removed" });
       fetchData();
+    }
+  };
+
+  // Password change handler
+  const handleChangePassword = async () => {
+    if (!passwordForm.newPassword || !passwordForm.confirmPassword) {
+      toast({ title: "Error", description: "Please fill in all password fields", variant: "destructive" });
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast({ title: "Error", description: "New passwords do not match", variant: "destructive" });
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      toast({ title: "Error", description: "Password must be at least 8 characters", variant: "destructive" });
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: passwordForm.newPassword
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Success", description: "Password updated successfully!" });
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (error: unknown) {
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -440,7 +559,7 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-muted/30 overflow-x-hidden">
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -458,14 +577,14 @@ const Admin = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6">
-        {/* Tabs - Mobile Responsive */}
-        <div className="flex flex-wrap gap-2 mb-6">
+      <div className="container mx-auto px-4 py-6 max-w-full overflow-x-hidden">
+        {/* Tabs - Mobile Responsive with overflow handling */}
+        <div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-2">
           <Button
             variant={activeTab === "products" ? "default" : "outline"}
             onClick={() => setActiveTab("products")}
             size="sm"
-            className="flex-1 sm:flex-none"
+            className="flex-shrink-0"
           >
             <Package size={16} className="mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Products</span>
@@ -474,7 +593,7 @@ const Admin = () => {
             variant={activeTab === "bookings" ? "default" : "outline"}
             onClick={() => setActiveTab("bookings")}
             size="sm"
-            className="flex-1 sm:flex-none relative"
+            className="flex-shrink-0 relative"
           >
             <Calendar size={16} className="mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Bookings</span>
@@ -488,7 +607,7 @@ const Admin = () => {
             variant={activeTab === "contacts" ? "default" : "outline"}
             onClick={() => setActiveTab("contacts")}
             size="sm"
-            className="flex-1 sm:flex-none relative"
+            className="flex-shrink-0 relative"
           >
             <Mail size={16} className="mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Messages</span>
@@ -502,7 +621,7 @@ const Admin = () => {
             variant={activeTab === "testimonials" ? "default" : "outline"}
             onClick={() => setActiveTab("testimonials")}
             size="sm"
-            className="flex-1 sm:flex-none relative"
+            className="flex-shrink-0 relative"
           >
             <Star size={16} className="mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Testimonials</span>
@@ -516,10 +635,19 @@ const Admin = () => {
             variant={activeTab === "analytics" ? "default" : "outline"}
             onClick={() => setActiveTab("analytics")}
             size="sm"
-            className="flex-1 sm:flex-none"
+            className="flex-shrink-0"
           >
             <BarChart3 size={16} className="mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Analytics</span>
+          </Button>
+          <Button
+            variant={activeTab === "settings" ? "default" : "outline"}
+            onClick={() => setActiveTab("settings")}
+            size="sm"
+            className="flex-shrink-0"
+          >
+            <Settings size={16} className="mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Settings</span>
           </Button>
         </div>
 
@@ -556,8 +684,8 @@ const Admin = () => {
                   )}
                   <div className="p-4">
                     <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold text-foreground text-sm sm:text-base">{product.name}</h3>
-                      <span className="text-primary font-bold">${product.price}</span>
+                      <h3 className="font-semibold text-foreground text-sm sm:text-base line-clamp-1">{product.name}</h3>
+                      <span className="text-primary font-bold flex-shrink-0">${product.price}</span>
                     </div>
                     <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{product.description}</p>
                     <span className={`text-xs px-2 py-1 rounded-full ${product.is_available ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
@@ -589,14 +717,14 @@ const Admin = () => {
         {activeTab === "bookings" && (
           <div className="space-y-4">
             {bookings.map((booking) => (
-              <div key={booking.id} className="bg-card rounded-xl shadow-card p-4 sm:p-6">
+              <div key={booking.id} className="bg-card rounded-xl shadow-card p-4 sm:p-6 overflow-hidden">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
-                  <div>
-                    <h3 className="font-semibold text-foreground">{booking.customer_name}</h3>
-                    <p className="text-sm text-muted-foreground">{booking.customer_email}</p>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-foreground truncate">{booking.customer_name}</h3>
+                    <p className="text-sm text-muted-foreground truncate">{booking.customer_email}</p>
                     <p className="text-sm text-muted-foreground">{booking.customer_phone}</p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 flex-shrink-0">
                     <span className={`text-xs px-3 py-1 rounded-full capitalize ${getStatusColor(booking.status)}`}>
                       {booking.status || "pending"}
                     </span>
@@ -607,11 +735,11 @@ const Admin = () => {
                 </div>
                 
                 {booking.notes && (
-                  <p className="text-sm text-muted-foreground mb-4 bg-muted/50 p-3 rounded-lg">{booking.notes}</p>
+                  <p className="text-sm text-muted-foreground mb-4 bg-muted/50 p-3 rounded-lg break-words">{booking.notes}</p>
                 )}
                 
                 {(booking.pickup_location || booking.dropoff_location) && (
-                  <div className="text-sm text-muted-foreground mb-4">
+                  <div className="text-sm text-muted-foreground mb-4 break-words">
                     {booking.pickup_location && <p>📍 Pickup: {booking.pickup_location}</p>}
                     {booking.dropoff_location && <p>📍 Dropoff: {booking.dropoff_location}</p>}
                   </div>
@@ -668,32 +796,32 @@ const Admin = () => {
             {contacts.map((contact) => (
               <div 
                 key={contact.id} 
-                className={`bg-card rounded-xl shadow-card p-4 sm:p-6 ${!contact.is_read ? "border-l-4 border-primary" : ""}`}
+                className={`bg-card rounded-xl shadow-card p-4 sm:p-6 overflow-hidden ${!contact.is_read ? "border-l-4 border-primary" : ""}`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-foreground">{contact.name}</h3>
                       {!contact.is_read && (
                         <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">New</span>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">{contact.email} • {contact.phone}</p>
+                    <p className="text-sm text-muted-foreground truncate">{contact.email} • {contact.phone}</p>
                   </div>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground flex-shrink-0">
                     {new Date(contact.created_at).toLocaleDateString()}
                   </span>
                 </div>
                 
                 {contact.subject && (
-                  <p className="text-sm font-medium text-foreground mb-2">{contact.subject}</p>
+                  <p className="text-sm font-medium text-foreground mb-2 break-words">{contact.subject}</p>
                 )}
-                <p className="text-muted-foreground mb-4">{contact.message}</p>
+                <p className="text-muted-foreground mb-4 break-words">{contact.message}</p>
                 
                 {contact.admin_reply && (
                   <div className="bg-muted/50 p-3 rounded-lg mb-4">
                     <p className="text-xs text-muted-foreground mb-1">Your reply ({contact.replied_at ? new Date(contact.replied_at).toLocaleDateString() : ""}):</p>
-                    <p className="text-sm text-foreground">{contact.admin_reply}</p>
+                    <p className="text-sm text-foreground break-words">{contact.admin_reply}</p>
                   </div>
                 )}
 
@@ -748,27 +876,40 @@ const Admin = () => {
               <Button variant="outline" size="sm">
                 Approved: {testimonials.filter(t => t.is_approved).length}
               </Button>
+              <Button size="sm" onClick={() => openTestimonialModal()} className="ml-auto">
+                <Plus size={18} className="mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Add Testimonial</span>
+              </Button>
             </div>
             
             {testimonials.map((testimonial) => (
               <div 
                 key={testimonial.id} 
-                className={`bg-card rounded-xl shadow-card p-4 sm:p-6 ${!testimonial.is_approved ? "border-l-4 border-yellow-500" : "border-l-4 border-green-500"}`}
+                className={`bg-card rounded-xl shadow-card p-4 sm:p-6 overflow-hidden ${!testimonial.is_approved ? "border-l-4 border-yellow-500" : "border-l-4 border-green-500"}`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-foreground">{testimonial.name}</h3>
-                      {testimonial.is_approved ? (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Approved</span>
-                      ) : (
-                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Pending</span>
-                      )}
+                  <div className="flex items-start gap-3 min-w-0">
+                    {testimonial.image_url && (
+                      <img 
+                        src={testimonial.image_url} 
+                        alt={testimonial.name} 
+                        className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-foreground">{testimonial.name}</h3>
+                        {testimonial.is_approved ? (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Approved</span>
+                        ) : (
+                          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Pending</span>
+                        )}
+                      </div>
+                      {testimonial.role && <p className="text-sm text-primary">{testimonial.role}</p>}
+                      {testimonial.email && <p className="text-sm text-muted-foreground truncate">{testimonial.email}</p>}
                     </div>
-                    {testimonial.role && <p className="text-sm text-primary">{testimonial.role}</p>}
-                    {testimonial.email && <p className="text-sm text-muted-foreground">{testimonial.email}</p>}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <div className="flex">
                       {[...Array(testimonial.rating || 5)].map((_, i) => (
                         <Star key={i} className="w-4 h-4 fill-primary text-primary" />
@@ -780,9 +921,17 @@ const Admin = () => {
                   </div>
                 </div>
                 
-                <p className="text-muted-foreground mb-4">"{testimonial.content}"</p>
+                <p className="text-muted-foreground mb-4 break-words">"{testimonial.content}"</p>
 
                 <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openTestimonialModal(testimonial)}
+                  >
+                    <Edit2 size={14} className="mr-1" />
+                    Edit
+                  </Button>
                   {testimonial.is_approved ? (
                     <Button
                       size="sm"
@@ -877,11 +1026,11 @@ const Admin = () => {
                   new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
                 ).slice(0, 5).map((item, idx) => (
                   <div key={idx} className="flex items-center gap-3 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <span className="text-muted-foreground">
+                    <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
+                    <span className="text-muted-foreground truncate">
                       {'customer_name' in item ? `Booking from ${item.customer_name}` : `Message from ${item.name}`}
                     </span>
-                    <span className="text-xs text-muted-foreground ml-auto">
+                    <span className="text-xs text-muted-foreground ml-auto flex-shrink-0">
                       {new Date(item.created_at).toLocaleDateString()}
                     </span>
                   </div>
@@ -893,13 +1042,83 @@ const Admin = () => {
             </div>
           </div>
         )}
+
+        {/* Settings Tab */}
+        {activeTab === "settings" && (
+          <div className="max-w-2xl space-y-6">
+            {/* Account Info */}
+            <div className="bg-card rounded-xl shadow-card p-6">
+              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Settings size={20} />
+                Account Information
+              </h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm text-muted-foreground">Email</label>
+                  <p className="text-foreground font-medium">{user?.email}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">User ID</label>
+                  <p className="text-foreground font-mono text-sm break-all">{user?.id}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Last Sign In</label>
+                  <p className="text-foreground">{user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Change Password */}
+            <div className="bg-card rounded-xl shadow-card p-6">
+              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Key size={20} />
+                Change Password
+              </h3>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">New Password</label>
+                  <Input
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                    placeholder="Enter new password (min 8 characters)"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Confirm New Password</label>
+                  <Input
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                    placeholder="Confirm new password"
+                  />
+                </div>
+                <Button onClick={handleChangePassword} disabled={changingPassword}>
+                  {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Update Password
+                </Button>
+              </div>
+            </div>
+
+            {/* Security Notice */}
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-6">
+              <h3 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">Security Tips</h3>
+              <ul className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
+                <li>• Use a strong, unique password with at least 8 characters</li>
+                <li>• Include uppercase, lowercase, numbers, and special characters</li>
+                <li>• Never share your admin credentials with anyone</li>
+                <li>• Log out after each session on shared devices</li>
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Product Modal */}
       {showProductModal && (
-        <div className="fixed inset-0 bg-charcoal/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-2xl shadow-elevated w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="p-4 sm:p-6 border-b border-border flex items-center justify-between">
+        <div className="fixed inset-0 bg-charcoal/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-card rounded-2xl shadow-elevated w-full max-w-lg max-h-[90vh] overflow-y-auto my-4">
+            <div className="p-4 sm:p-6 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
               <h2 className="text-lg sm:text-xl font-display font-bold text-foreground">
                 {editingProduct ? "Edit Product" : "Add New Product"}
               </h2>
@@ -923,7 +1142,7 @@ const Admin = () => {
                   onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
                   placeholder="Describe the product..."
                   rows={3}
-                  className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary outline-none"
+                  className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary outline-none resize-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -1019,7 +1238,7 @@ const Admin = () => {
                 <label htmlFor="available" className="text-sm text-foreground">Available</label>
               </div>
             </div>
-            <div className="p-4 sm:p-6 border-t border-border flex gap-3">
+            <div className="p-4 sm:p-6 border-t border-border flex gap-3 sticky bottom-0 bg-card">
               <Button variant="outline" onClick={() => setShowProductModal(false)} className="flex-1">
                 Cancel
               </Button>
@@ -1033,10 +1252,99 @@ const Admin = () => {
         </div>
       )}
 
+      {/* Testimonial Modal */}
+      {showTestimonialModal && (
+        <div className="fixed inset-0 bg-charcoal/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-card rounded-2xl shadow-elevated w-full max-w-lg max-h-[90vh] overflow-y-auto my-4">
+            <div className="p-4 sm:p-6 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
+              <h2 className="text-lg sm:text-xl font-display font-bold text-foreground">
+                {editingTestimonial ? "Edit Testimonial" : "Add New Testimonial"}
+              </h2>
+              <button onClick={() => setShowTestimonialModal(false)} className="text-muted-foreground hover:text-foreground">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-4 sm:p-6 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Customer Name *</label>
+                <Input
+                  value={testimonialForm.name}
+                  onChange={(e) => setTestimonialForm({ ...testimonialForm, name: e.target.value })}
+                  placeholder="e.g., John Smith"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Role/Title</label>
+                <Input
+                  value={testimonialForm.role}
+                  onChange={(e) => setTestimonialForm({ ...testimonialForm, role: e.target.value })}
+                  placeholder="e.g., Business Owner, Wedding Planner"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Testimonial Content *</label>
+                <textarea
+                  value={testimonialForm.content}
+                  onChange={(e) => setTestimonialForm({ ...testimonialForm, content: e.target.value })}
+                  placeholder="What did they say about your service?"
+                  rows={4}
+                  className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary outline-none resize-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Rating</label>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setTestimonialForm({ ...testimonialForm, rating: star })}
+                      className="p-1"
+                    >
+                      <Star 
+                        className={`w-6 h-6 ${star <= testimonialForm.rating ? "fill-primary text-primary" : "text-muted-foreground"}`} 
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Image URL (optional)</label>
+                <Input
+                  value={testimonialForm.image_url}
+                  onChange={(e) => setTestimonialForm({ ...testimonialForm, image_url: e.target.value })}
+                  placeholder="https://example.com/photo.jpg"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="approved"
+                  checked={testimonialForm.is_approved}
+                  onChange={(e) => setTestimonialForm({ ...testimonialForm, is_approved: e.target.checked })}
+                  className="rounded"
+                />
+                <label htmlFor="approved" className="text-sm text-foreground">Publish immediately</label>
+              </div>
+            </div>
+            <div className="p-4 sm:p-6 border-t border-border flex gap-3 sticky bottom-0 bg-card">
+              <Button variant="outline" onClick={() => setShowTestimonialModal(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleSaveTestimonial} disabled={saving} className="flex-1">
+                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Save size={16} className="mr-2" />
+                {editingTestimonial ? "Update" : "Create"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Reply Modal */}
       {replyModalOpen && replyingTo && (
-        <div className="fixed inset-0 bg-charcoal/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-2xl shadow-elevated w-full max-w-lg">
+        <div className="fixed inset-0 bg-charcoal/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-card rounded-2xl shadow-elevated w-full max-w-lg my-4">
             <div className="p-4 sm:p-6 border-b border-border flex items-center justify-between">
               <h2 className="text-lg sm:text-xl font-display font-bold text-foreground">
                 Reply to {replyingTo.name}
@@ -1048,7 +1356,7 @@ const Admin = () => {
             <div className="p-4 sm:p-6 space-y-4">
               <div className="bg-muted/50 p-3 rounded-lg">
                 <p className="text-sm text-muted-foreground mb-1">Original message:</p>
-                <p className="text-foreground">{replyingTo.message}</p>
+                <p className="text-foreground break-words">{replyingTo.message}</p>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Your Reply</label>
@@ -1057,7 +1365,7 @@ const Admin = () => {
                   onChange={(e) => setReplyText(e.target.value)}
                   placeholder="Type your reply..."
                   rows={4}
-                  className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary outline-none"
+                  className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary outline-none resize-none"
                 />
               </div>
             </div>
