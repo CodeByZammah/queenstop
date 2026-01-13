@@ -4,11 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, MapPin, Route } from "lucide-react";
 import { siteConfig } from "@/config/siteConfig";
 import { bookingSchema } from "@/lib/validation";
 import { getSafeErrorMessage } from "@/lib/error-handler";
+import { generateWhatsAppLink } from "@/hooks/useSiteConfig";
 import { z } from "zod";
+import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 
 interface BookingModalProps {
@@ -19,13 +21,20 @@ interface BookingModalProps {
   category?: string;
 }
 
-interface ClientProfile {
-  full_name: string | null;
-  email: string | null;
-  phone: string | null;
-  default_pickup_location: string | null;
-  default_dropoff_location: string | null;
-}
+// Common country codes
+const countryCodes = [
+  { code: "+260", country: "Zambia" },
+  { code: "+27", country: "South Africa" },
+  { code: "+254", country: "Kenya" },
+  { code: "+255", country: "Tanzania" },
+  { code: "+256", country: "Uganda" },
+  { code: "+263", country: "Zimbabwe" },
+  { code: "+265", country: "Malawi" },
+  { code: "+267", country: "Botswana" },
+  { code: "+1", country: "USA/Canada" },
+  { code: "+44", country: "UK" },
+  { code: "+91", country: "India" },
+];
 
 const BookingModal = ({ isOpen, onClose, productName, productId, category }: BookingModalProps) => {
   const { toast } = useToast();
@@ -35,8 +44,10 @@ const BookingModal = ({ isOpen, onClose, productName, productId, category }: Boo
     name: "",
     email: "",
     phone: "",
-    pickupLocation: "",
-    dropoffLocation: "",
+    countryCode: "+260",
+    routeType: "local" as "local" | "outside",
+    bookingDate: "",
+    bookingTime: "",
   });
 
   // Load user profile data when modal opens
@@ -54,18 +65,17 @@ const BookingModal = ({ isOpen, onClose, productName, productId, category }: Boo
       // Fetch profile data
       const { data: profile } = await supabase
         .from("client_profiles")
-        .select("full_name, email, phone, default_pickup_location, default_dropoff_location")
+        .select("full_name, email, phone")
         .eq("user_id", session.user.id)
         .single();
 
       if (profile) {
-        setFormData({
+        setFormData(prev => ({
+          ...prev,
           name: profile.full_name || "",
           email: profile.email || session.user.email || "",
           phone: profile.phone || "",
-          pickupLocation: profile.default_pickup_location || "",
-          dropoffLocation: profile.default_dropoff_location || "",
-        });
+        }));
       } else {
         setFormData(prev => ({
           ...prev,
@@ -79,16 +89,23 @@ const BookingModal = ({ isOpen, onClose, productName, productId, category }: Boo
     name: string;
     email: string;
     phone: string;
+    countryCode: string;
     product: string;
     category: string;
+    routeType?: string;
+    bookingDate?: string;
+    bookingTime?: string;
   }) => {
     const message = `🔔 New Booking Alert!
 
 Customer: ${bookingDetails.name}
 Email: ${bookingDetails.email}
-Phone: ${bookingDetails.phone}
+Phone: ${bookingDetails.countryCode} ${bookingDetails.phone}
 Product: ${bookingDetails.product}
 Category: ${bookingDetails.category}
+${bookingDetails.routeType ? `Route: ${bookingDetails.routeType === "local" ? "Local Routes" : "Outside Lusaka"}` : ""}
+${bookingDetails.bookingDate ? `Date: ${bookingDetails.bookingDate}` : ""}
+${bookingDetails.bookingTime ? `Time: ${bookingDetails.bookingTime}` : ""}
 
 Please check the admin panel for full details.`;
 
@@ -104,9 +121,6 @@ Please check the admin panel for full details.`;
       customer_name: formData.name,
       customer_email: formData.email,
       customer_phone: formData.phone,
-      pickup_location: formData.pickupLocation || undefined,
-      dropoff_location: formData.dropoffLocation || undefined,
-      notes: `Product: ${productName || "Not specified"}, Category: ${category || "Not specified"}`,
     };
 
     try {
@@ -128,11 +142,13 @@ Please check the admin panel for full details.`;
         customer_name: formData.name.trim(),
         customer_email: formData.email.trim(),
         customer_phone: formData.phone.trim(),
+        country_code: formData.countryCode,
         product_id: productId || null,
-        pickup_location: formData.pickupLocation.trim() || null,
-        dropoff_location: formData.dropoffLocation.trim() || null,
+        route_type: category === "car" ? formData.routeType : null,
+        pickup_date: formData.bookingDate || null,
+        booking_time: formData.bookingTime || null,
         notes: `Product: ${productName || "Not specified"}, Category: ${category || "Not specified"}`,
-        user_id: user?.id || null, // Link booking to logged-in user
+        user_id: user?.id || null,
       });
 
       if (error) throw error;
@@ -147,16 +163,22 @@ Please check the admin panel for full details.`;
         name: formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim(),
+        countryCode: formData.countryCode,
         product: productName || "Not specified",
         category: category || "Not specified",
+        routeType: category === "car" ? formData.routeType : undefined,
+        bookingDate: formData.bookingDate || undefined,
+        bookingTime: formData.bookingTime || undefined,
       });
 
       setFormData({
         name: "",
         email: "",
         phone: "",
-        pickupLocation: "",
-        dropoffLocation: "",
+        countryCode: "+260",
+        routeType: "local",
+        bookingDate: "",
+        bookingTime: "",
       });
       onClose();
     } catch (error: unknown) {
@@ -175,7 +197,7 @@ Please check the admin panel for full details.`;
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-display">
-            Book {productName || "Now"}
+            {category === "car" ? "Book" : "Enquire About"} {productName || "Now"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -200,37 +222,86 @@ Please check the admin panel for full details.`;
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-muted-foreground">Phone *</label>
-            <Input
-              type="tel"
-              placeholder="Phone number"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              required
-            />
+            <div className="flex gap-2">
+              <select
+                value={formData.countryCode}
+                onChange={(e) => setFormData({ ...formData, countryCode: e.target.value })}
+                className="w-28 p-2 border border-border rounded-lg bg-background text-foreground text-sm"
+              >
+                {countryCodes.map((cc) => (
+                  <option key={cc.code} value={cc.code}>
+                    {cc.code} {cc.country}
+                  </option>
+                ))}
+              </select>
+              <Input
+                type="tel"
+                placeholder="Phone number"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                required
+                className="flex-1"
+              />
+            </div>
           </div>
+          
           {category === "car" && (
             <>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">Pick Up Location</label>
-                <Input
-                  placeholder="Enter location"
-                  value={formData.pickupLocation}
-                  onChange={(e) => setFormData({ ...formData, pickupLocation: e.target.value })}
-                />
+                <label className="text-sm font-medium text-muted-foreground">Route Type</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, routeType: "local" })}
+                    className={cn(
+                      "flex-1 p-3 border rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2",
+                      formData.routeType === "local"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border text-foreground hover:border-primary/50"
+                    )}
+                  >
+                    <MapPin size={16} />
+                    Local
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, routeType: "outside" })}
+                    className={cn(
+                      "flex-1 p-3 border rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2",
+                      formData.routeType === "outside"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border text-foreground hover:border-primary/50"
+                    )}
+                  >
+                    <Route size={16} />
+                    Outside Lusaka
+                  </button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">Drop Off Location</label>
-                <Input
-                  placeholder="Enter destination"
-                  value={formData.dropoffLocation}
-                  onChange={(e) => setFormData({ ...formData, dropoffLocation: e.target.value })}
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Date</label>
+                  <Input
+                    type="date"
+                    value={formData.bookingDate}
+                    onChange={(e) => setFormData({ ...formData, bookingDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Time</label>
+                  <Input
+                    type="time"
+                    value={formData.bookingTime}
+                    onChange={(e) => setFormData({ ...formData, bookingTime: e.target.value })}
+                  />
+                </div>
               </div>
             </>
           )}
+          
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Submit Booking
+            {category === "car" ? "Submit Booking" : "Submit Enquiry"}
           </Button>
         </form>
       </DialogContent>

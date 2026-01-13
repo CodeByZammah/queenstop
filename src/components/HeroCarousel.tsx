@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSiteConfig, type HeroImage } from "@/hooks/useSiteConfig";
 
 // Import media assets
 import heroCar from "@/assets/hero-car.jpg";
@@ -45,6 +46,22 @@ const defaultMediaItems: MediaItem[] = [
   },
 ];
 
+// Helper to convert admin hero images to MediaItems
+const convertHeroImages = (heroImages: HeroImage[]): MediaItem[] => {
+  if (!heroImages || heroImages.length === 0) return defaultMediaItems;
+  
+  return heroImages
+    .filter(img => img.url)
+    .map(img => ({
+      type: "image" as const,
+      src: img.url,
+      alt: img.alt || "Hero image",
+      headline: img.headline || "Welcome to",
+      highlightText: img.highlightText || "Queenstop",
+      subtitle: img.subtitle || "Premium services for every occasion.",
+    }));
+};
+
 interface HeroCarouselProps {
   items?: MediaItem[];
   autoPlayInterval?: number;
@@ -54,14 +71,18 @@ interface HeroCarouselProps {
 }
 
 const HeroCarousel = ({
-  items = defaultMediaItems,
+  items: propItems,
   autoPlayInterval = 8000,
   showControls = true,
   showIndicators = true,
   onSlideChange,
 }: HeroCarouselProps) => {
+  const { config } = useSiteConfig();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  
+  // Use admin-configured hero images if available, otherwise use props or defaults
+  const items = propItems || (config.hero_images?.length > 0 ? convertHeroImages(config.hero_images) : defaultMediaItems);
 
   const goToNext = useCallback(() => {
     if (isTransitioning) return;
