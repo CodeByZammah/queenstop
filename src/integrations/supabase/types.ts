@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       bookings: {
         Row: {
+          booking_time: string | null
+          country_code: string | null
           created_at: string
           customer_email: string
           customer_name: string
@@ -27,10 +29,13 @@ export type Database = {
           pickup_date: string | null
           pickup_location: string | null
           product_id: string | null
+          route_type: string | null
           status: string | null
           user_id: string | null
         }
         Insert: {
+          booking_time?: string | null
+          country_code?: string | null
           created_at?: string
           customer_email: string
           customer_name: string
@@ -42,10 +47,13 @@ export type Database = {
           pickup_date?: string | null
           pickup_location?: string | null
           product_id?: string | null
+          route_type?: string | null
           status?: string | null
           user_id?: string | null
         }
         Update: {
+          booking_time?: string | null
+          country_code?: string | null
           created_at?: string
           customer_email?: string
           customer_name?: string
@@ -57,6 +65,7 @@ export type Database = {
           pickup_date?: string | null
           pickup_location?: string | null
           product_id?: string | null
+          route_type?: string | null
           status?: string | null
           user_id?: string | null
         }
@@ -153,9 +162,11 @@ export type Database = {
           features: string[] | null
           id: string
           image_url: string | null
+          images: string[] | null
           is_available: boolean | null
           name: string
           price: number
+          route_tags: string[] | null
           updated_at: string
         }
         Insert: {
@@ -165,9 +176,11 @@ export type Database = {
           features?: string[] | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           is_available?: boolean | null
           name: string
           price: number
+          route_tags?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -177,9 +190,35 @@ export type Database = {
           features?: string[] | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           is_available?: boolean | null
           name?: string
           price?: number
+          route_tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      site_config: {
+        Row: {
+          config_key: string
+          config_value: Json
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          config_key: string
+          config_value: Json
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          config_key?: string
+          config_value?: Json
+          created_at?: string
+          id?: string
           updated_at?: string
         }
         Relationships: []

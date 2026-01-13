@@ -8,11 +8,12 @@ import {
   Plus, LogOut, Car, Gem, Heart, Loader2, Trash2, Edit2, 
   Package, Mail, Calendar, X, Save, Upload, Image as ImageIcon,
   Check, XCircle, Clock, Eye, EyeOff, MessageSquare, BarChart3, Star,
-  Settings, Key
+  Settings, Key, Globe, Phone, MapPin, ExternalLink
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import type { User } from "@supabase/supabase-js";
 import { getSafeErrorMessage } from "@/lib/error-handler";
+import { formatKwacha, generateWhatsAppLink, useSiteConfig, type SiteContacts, type SiteAddress, type SiteSocial, type HeroImage } from "@/hooks/useSiteConfig";
 
 type ProductCategory = "car" | "jewellery" | "wedding";
 type BookingStatus = "pending" | "completed" | "cancelled";
@@ -24,6 +25,8 @@ interface Product {
   price: number;
   category: ProductCategory;
   image_url: string | null;
+  images: string[] | null;
+  route_tags: string[] | null;
   features: string[] | null;
   is_available: boolean;
   created_at: string;
@@ -34,6 +37,9 @@ interface Booking {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
+  country_code: string | null;
+  route_type: string | null;
+  booking_time: string | null;
   pickup_location: string | null;
   dropoff_location: string | null;
   pickup_date: string | null;
@@ -71,6 +77,7 @@ interface Testimonial {
 const Admin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { config, updateConfig, refetch: refetchConfig } = useSiteConfig();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"products" | "bookings" | "contacts" | "testimonials" | "analytics" | "settings">("products");
@@ -88,12 +95,15 @@ const Admin = () => {
     price: "",
     category: "car" as ProductCategory,
     image_url: "",
+    images: [] as string[],
+    route_tags: [] as string[],
     features: "",
     is_available: true,
   });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const multiImageInputRef = useRef<HTMLInputElement>(null);
   
   // Reply modal state
   const [replyModalOpen, setReplyModalOpen] = useState(false);
@@ -121,6 +131,31 @@ const Admin = () => {
   });
   const [changingPassword, setChangingPassword] = useState(false);
 
+  // Site config editing state
+  const [settingsTab, setSettingsTab] = useState<"account" | "contacts" | "social" | "hero">("account");
+  const [contactsForm, setContactsForm] = useState<SiteContacts>({
+    phone: "",
+    phoneSecondary: "",
+    email: "",
+    whatsappNumber: "",
+    whatsappRaw: "",
+  });
+  const [addressForm, setAddressForm] = useState<SiteAddress>({
+    street: "",
+    city: "",
+    zip: "",
+    country: "",
+    mapUrl: "",
+  });
+  const [socialForm, setSocialForm] = useState<SiteSocial>({
+    facebook: "",
+    instagram: "",
+    twitter: "",
+    youtube: "",
+  });
+  const [heroImages, setHeroImages] = useState<HeroImage[]>([]);
+  const [savingConfig, setSavingConfig] = useState(false);
+
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -129,7 +164,6 @@ const Admin = () => {
         return;
       }
 
-      // Check if user has admin role
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
@@ -164,6 +198,14 @@ const Admin = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate, toast]);
+
+  // Load site config into forms
+  useEffect(() => {
+    setContactsForm(config.contacts);
+    setAddressForm(config.address);
+    setSocialForm(config.social);
+    setHeroImages(config.hero_images || []);
+  }, [config]);
 
   const fetchData = async () => {
     const { data: productsData } = await supabase
@@ -205,6 +247,8 @@ const Admin = () => {
         price: product.price.toString(),
         category: product.category,
         image_url: product.image_url || "",
+        images: product.images || [],
+        route_tags: product.route_tags || [],
         features: product.features?.join(", ") || "",
         is_available: product.is_available,
       });
@@ -217,6 +261,8 @@ const Admin = () => {
         price: "",
         category: activeCategory,
         image_url: "",
+        images: [],
+        route_tags: [],
         features: "",
         is_available: true,
       });
@@ -225,7 +271,7 @@ const Admin = () => {
     setShowProductModal(true);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isMain = true) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -256,14 +302,23 @@ const Admin = () => {
         .from("products")
         .getPublicUrl(filePath);
 
-      setProductForm({ ...productForm, image_url: publicUrl });
-      setImagePreview(publicUrl);
+      if (isMain) {
+        setProductForm({ ...productForm, image_url: publicUrl });
+        setImagePreview(publicUrl);
+      } else {
+        setProductForm({ ...productForm, images: [...productForm.images, publicUrl] });
+      }
       toast({ title: "Success", description: "Image uploaded!" });
     } catch (error: any) {
       toast({ title: "Upload failed", description: error.message, variant: "destructive" });
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  const removeAdditionalImage = (index: number) => {
+    const newImages = productForm.images.filter((_, i) => i !== index);
+    setProductForm({ ...productForm, images: newImages });
   };
 
   const handleSaveProduct = async () => {
@@ -279,6 +334,8 @@ const Admin = () => {
       price: parseFloat(productForm.price),
       category: productForm.category,
       image_url: productForm.image_url || null,
+      images: productForm.images.length > 0 ? productForm.images : null,
+      route_tags: productForm.route_tags.length > 0 ? productForm.route_tags : null,
       features: productForm.features ? productForm.features.split(",").map((f) => f.trim()) : null,
       is_available: productForm.is_available,
     };
@@ -317,7 +374,6 @@ const Admin = () => {
     }
   };
 
-  // Booking status update
   const handleUpdateBookingStatus = async (id: string, status: BookingStatus) => {
     const { error } = await supabase
       .from("bookings")
@@ -332,7 +388,6 @@ const Admin = () => {
     }
   };
 
-  // Delete booking
   const handleDeleteBooking = async (id: string) => {
     if (!confirm("Are you sure you want to delete this booking?")) return;
     
@@ -345,7 +400,6 @@ const Admin = () => {
     }
   };
 
-  // Toggle message read status
   const handleToggleMessageRead = async (id: string, currentStatus: boolean) => {
     const { error } = await supabase
       .from("contact_submissions")
@@ -359,7 +413,6 @@ const Admin = () => {
     }
   };
 
-  // Delete message
   const handleDeleteMessage = async (id: string) => {
     if (!confirm("Are you sure you want to delete this message?")) return;
     
@@ -372,14 +425,12 @@ const Admin = () => {
     }
   };
 
-  // Open reply modal
   const openReplyModal = (contact: ContactSubmission) => {
     setReplyingTo(contact);
     setReplyText(contact.admin_reply || "");
     setReplyModalOpen(true);
   };
 
-  // Send reply
   const handleSendReply = async () => {
     if (!replyingTo || !replyText.trim()) return;
     
@@ -404,11 +455,6 @@ const Admin = () => {
     }
     setSendingReply(false);
   };
-
-  const filteredProducts = products.filter((p) => p.category === activeCategory);
-  const unreadMessages = contacts.filter(c => !c.is_read).length;
-  const pendingBookings = bookings.filter(b => b.status === "pending").length;
-  const pendingTestimonials = testimonials.filter(t => !t.is_approved).length;
 
   // Testimonial handlers
   const openTestimonialModal = (testimonial?: Testimonial) => {
@@ -534,6 +580,49 @@ const Admin = () => {
     }
   };
 
+  // Save site config handlers
+  const handleSaveContacts = async () => {
+    setSavingConfig(true);
+    try {
+      await updateConfig("contacts", contactsForm);
+      await updateConfig("address", addressForm);
+      toast({ title: "Success", description: "Contact information updated!" });
+    } catch (error) {
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const handleSaveSocial = async () => {
+    setSavingConfig(true);
+    try {
+      await updateConfig("social", socialForm);
+      toast({ title: "Success", description: "Social links updated!" });
+    } catch (error) {
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const handleSaveHeroImages = async () => {
+    setSavingConfig(true);
+    try {
+      await updateConfig("hero_images", heroImages);
+      toast({ title: "Success", description: "Hero images updated!" });
+    } catch (error) {
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const filteredProducts = products.filter((p) => p.category === activeCategory);
+  const unreadMessages = contacts.filter(c => !c.is_read).length;
+  const pendingBookings = bookings.filter(b => b.status === "pending").length;
+  const pendingTestimonials = testimonials.filter(t => !t.is_approved).length;
+
   const getCategoryIcon = (cat: ProductCategory) => {
     switch (cat) {
       case "car": return <Car size={18} />;
@@ -548,6 +637,10 @@ const Admin = () => {
       case "cancelled": return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
       default: return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
     }
+  };
+
+  const getWhatsAppLink = (phone: string, countryCode: string | null) => {
+    return generateWhatsAppLink(phone, countryCode || "+260");
   };
 
   if (loading) {
@@ -578,23 +671,13 @@ const Admin = () => {
       </header>
 
       <div className="container mx-auto px-4 py-6 max-w-full overflow-x-hidden">
-        {/* Tabs - Mobile Responsive with overflow handling */}
+        {/* Tabs */}
         <div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-2">
-          <Button
-            variant={activeTab === "products" ? "default" : "outline"}
-            onClick={() => setActiveTab("products")}
-            size="sm"
-            className="flex-shrink-0"
-          >
+          <Button variant={activeTab === "products" ? "default" : "outline"} onClick={() => setActiveTab("products")} size="sm" className="flex-shrink-0">
             <Package size={16} className="mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Products</span>
           </Button>
-          <Button
-            variant={activeTab === "bookings" ? "default" : "outline"}
-            onClick={() => setActiveTab("bookings")}
-            size="sm"
-            className="flex-shrink-0 relative"
-          >
+          <Button variant={activeTab === "bookings" ? "default" : "outline"} onClick={() => setActiveTab("bookings")} size="sm" className="flex-shrink-0 relative">
             <Calendar size={16} className="mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Bookings</span>
             {pendingBookings > 0 && (
@@ -603,12 +686,7 @@ const Admin = () => {
               </span>
             )}
           </Button>
-          <Button
-            variant={activeTab === "contacts" ? "default" : "outline"}
-            onClick={() => setActiveTab("contacts")}
-            size="sm"
-            className="flex-shrink-0 relative"
-          >
+          <Button variant={activeTab === "contacts" ? "default" : "outline"} onClick={() => setActiveTab("contacts")} size="sm" className="flex-shrink-0 relative">
             <Mail size={16} className="mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Messages</span>
             {unreadMessages > 0 && (
@@ -617,12 +695,7 @@ const Admin = () => {
               </span>
             )}
           </Button>
-          <Button
-            variant={activeTab === "testimonials" ? "default" : "outline"}
-            onClick={() => setActiveTab("testimonials")}
-            size="sm"
-            className="flex-shrink-0 relative"
-          >
+          <Button variant={activeTab === "testimonials" ? "default" : "outline"} onClick={() => setActiveTab("testimonials")} size="sm" className="flex-shrink-0 relative">
             <Star size={16} className="mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Testimonials</span>
             {pendingTestimonials > 0 && (
@@ -631,21 +704,11 @@ const Admin = () => {
               </span>
             )}
           </Button>
-          <Button
-            variant={activeTab === "analytics" ? "default" : "outline"}
-            onClick={() => setActiveTab("analytics")}
-            size="sm"
-            className="flex-shrink-0"
-          >
+          <Button variant={activeTab === "analytics" ? "default" : "outline"} onClick={() => setActiveTab("analytics")} size="sm" className="flex-shrink-0">
             <BarChart3 size={16} className="mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Analytics</span>
           </Button>
-          <Button
-            variant={activeTab === "settings" ? "default" : "outline"}
-            onClick={() => setActiveTab("settings")}
-            size="sm"
-            className="flex-shrink-0"
-          >
+          <Button variant={activeTab === "settings" ? "default" : "outline"} onClick={() => setActiveTab("settings")} size="sm" className="flex-shrink-0">
             <Settings size={16} className="mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Settings</span>
           </Button>
@@ -656,12 +719,7 @@ const Admin = () => {
           <>
             <div className="flex flex-wrap gap-2 mb-6">
               {(["car", "jewellery", "wedding"] as ProductCategory[]).map((cat) => (
-                <Button
-                  key={cat}
-                  variant={activeCategory === cat ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveCategory(cat)}
-                >
+                <Button key={cat} variant={activeCategory === cat ? "default" : "outline"} size="sm" onClick={() => setActiveCategory(cat)}>
                   {getCategoryIcon(cat)}
                   <span className="ml-2 capitalize hidden sm:inline">{cat === "car" ? "Car Hire" : cat}</span>
                 </Button>
@@ -675,17 +733,36 @@ const Admin = () => {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredProducts.map((product) => (
                 <div key={product.id} className="bg-card rounded-xl shadow-card overflow-hidden">
-                  {product.image_url ? (
-                    <img src={product.image_url} alt={product.name} className="w-full h-40 sm:h-48 object-cover" />
-                  ) : (
-                    <div className="w-full h-40 sm:h-48 bg-muted flex items-center justify-center">
-                      {getCategoryIcon(product.category)}
-                    </div>
-                  )}
+                  <div className="relative">
+                    {product.image_url ? (
+                      <img src={product.image_url} alt={product.name} className="w-full h-40 sm:h-48 object-cover aspect-square" />
+                    ) : (
+                      <div className="w-full h-40 sm:h-48 bg-muted flex items-center justify-center">
+                        {getCategoryIcon(product.category)}
+                      </div>
+                    )}
+                    {/* Route tags for cars */}
+                    {product.category === "car" && product.route_tags && product.route_tags.length > 0 && (
+                      <div className="absolute top-2 left-2 flex gap-1">
+                        {product.route_tags.includes("local") && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-green-600 text-white">Local</span>
+                        )}
+                        {product.route_tags.includes("outside") && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white">Outside</span>
+                        )}
+                      </div>
+                    )}
+                    {/* Multiple images indicator */}
+                    {product.images && product.images.length > 0 && (
+                      <span className="absolute bottom-2 right-2 text-xs px-2 py-1 rounded bg-background/80 text-foreground">
+                        +{product.images.length} photos
+                      </span>
+                    )}
+                  </div>
                   <div className="p-4">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-semibold text-foreground text-sm sm:text-base line-clamp-1">{product.name}</h3>
-                      <span className="text-primary font-bold flex-shrink-0">${product.price}</span>
+                      <span className="text-primary font-bold flex-shrink-0">{formatKwacha(product.price)}</span>
                     </div>
                     <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{product.description}</p>
                     <span className={`text-xs px-2 py-1 rounded-full ${product.is_available ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
@@ -693,12 +770,10 @@ const Admin = () => {
                     </span>
                     <div className="flex gap-2 mt-4">
                       <Button size="sm" variant="outline" onClick={() => openProductModal(product)} className="flex-1">
-                        <Edit2 size={14} className="mr-1" />
-                        Edit
+                        <Edit2 size={14} className="mr-1" />Edit
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => handleDeleteProduct(product.id)} className="flex-1">
-                        <Trash2 size={14} className="mr-1" />
-                        Delete
+                        <Trash2 size={14} className="mr-1" />Delete
                       </Button>
                     </div>
                   </div>
@@ -722,62 +797,65 @@ const Admin = () => {
                   <div className="min-w-0">
                     <h3 className="font-semibold text-foreground truncate">{booking.customer_name}</h3>
                     <p className="text-sm text-muted-foreground truncate">{booking.customer_email}</p>
-                    <p className="text-sm text-muted-foreground">{booking.customer_phone}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-sm text-muted-foreground">{booking.country_code || "+260"} {booking.customer_phone}</p>
+                      <a 
+                        href={getWhatsAppLink(booking.customer_phone, booking.country_code)} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-green-600 hover:text-green-700"
+                      >
+                        <ExternalLink size={14} />
+                      </a>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-2 flex-shrink-0">
                     <span className={`text-xs px-3 py-1 rounded-full capitalize ${getStatusColor(booking.status)}`}>
                       {booking.status || "pending"}
                     </span>
+                    {booking.route_type && (
+                      <span className={`text-xs px-3 py-1 rounded-full ${booking.route_type === "local" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                        {booking.route_type === "local" ? "Local" : "Outside Lusaka"}
+                      </span>
+                    )}
                     <span className="text-xs text-muted-foreground">
                       {new Date(booking.created_at).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
                 
+                {(booking.pickup_date || booking.booking_time) && (
+                  <div className="text-sm text-muted-foreground mb-4 bg-muted/50 p-3 rounded-lg">
+                    {booking.pickup_date && <p>📅 Date: {booking.pickup_date}</p>}
+                    {booking.booking_time && <p>🕐 Time: {booking.booking_time}</p>}
+                  </div>
+                )}
+                
                 {booking.notes && (
                   <p className="text-sm text-muted-foreground mb-4 bg-muted/50 p-3 rounded-lg break-words">{booking.notes}</p>
                 )}
-                
-                {(booking.pickup_location || booking.dropoff_location) && (
-                  <div className="text-sm text-muted-foreground mb-4 break-words">
-                    {booking.pickup_location && <p>📍 Pickup: {booking.pickup_location}</p>}
-                    {booking.dropoff_location && <p>📍 Dropoff: {booking.dropoff_location}</p>}
-                  </div>
-                )}
 
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant={booking.status === "pending" ? "default" : "outline"}
-                    onClick={() => handleUpdateBookingStatus(booking.id, "pending")}
-                  >
-                    <Clock size={14} className="mr-1" />
-                    Pending
+                  <Button size="sm" variant={booking.status === "pending" ? "default" : "outline"} onClick={() => handleUpdateBookingStatus(booking.id, "pending")}>
+                    <Clock size={14} className="mr-1" />Pending
                   </Button>
-                  <Button
-                    size="sm"
-                    variant={booking.status === "completed" ? "default" : "outline"}
-                    onClick={() => handleUpdateBookingStatus(booking.id, "completed")}
-                  >
-                    <Check size={14} className="mr-1" />
-                    Completed
+                  <Button size="sm" variant={booking.status === "completed" ? "default" : "outline"} onClick={() => handleUpdateBookingStatus(booking.id, "completed")}>
+                    <Check size={14} className="mr-1" />Completed
                   </Button>
-                  <Button
-                    size="sm"
-                    variant={booking.status === "cancelled" ? "default" : "outline"}
-                    onClick={() => handleUpdateBookingStatus(booking.id, "cancelled")}
-                  >
-                    <XCircle size={14} className="mr-1" />
-                    Cancelled
+                  <Button size="sm" variant={booking.status === "cancelled" ? "default" : "outline"} onClick={() => handleUpdateBookingStatus(booking.id, "cancelled")}>
+                    <XCircle size={14} className="mr-1" />Cancelled
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDeleteBooking(booking.id)}
-                    className="ml-auto text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  <a 
+                    href={getWhatsAppLink(booking.customer_phone, booking.country_code)} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
                   >
-                    <Trash2 size={14} className="mr-1" />
-                    Delete
+                    <Button size="sm" variant="outline" className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100">
+                      <MessageSquare size={14} className="mr-1" />WhatsApp
+                    </Button>
+                  </a>
+                  <Button size="sm" variant="outline" onClick={() => handleDeleteBooking(booking.id)} className="ml-auto text-destructive hover:bg-destructive hover:text-destructive-foreground">
+                    <Trash2 size={14} className="mr-1" />Delete
                   </Button>
                 </div>
               </div>
@@ -794,10 +872,7 @@ const Admin = () => {
         {activeTab === "contacts" && (
           <div className="space-y-4">
             {contacts.map((contact) => (
-              <div 
-                key={contact.id} 
-                className={`bg-card rounded-xl shadow-card p-4 sm:p-6 overflow-hidden ${!contact.is_read ? "border-l-4 border-primary" : ""}`}
-              >
+              <div key={contact.id} className={`bg-card rounded-xl shadow-card p-4 sm:p-6 overflow-hidden ${!contact.is_read ? "border-l-4 border-primary" : ""}`}>
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -826,30 +901,16 @@ const Admin = () => {
                 )}
 
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleToggleMessageRead(contact.id, contact.is_read)}
-                  >
+                  <Button size="sm" variant="outline" onClick={() => handleToggleMessageRead(contact.id, contact.is_read)}>
                     {contact.is_read ? <EyeOff size={14} className="mr-1" /> : <Eye size={14} className="mr-1" />}
                     {contact.is_read ? "Mark Unread" : "Mark Read"}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openReplyModal(contact)}
-                  >
+                  <Button size="sm" variant="outline" onClick={() => openReplyModal(contact)}>
                     <MessageSquare size={14} className="mr-1" />
                     {contact.admin_reply ? "Edit Reply" : "Reply"}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDeleteMessage(contact.id)}
-                    className="ml-auto text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  >
-                    <Trash2 size={14} className="mr-1" />
-                    Delete
+                  <Button size="sm" variant="outline" onClick={() => handleDeleteMessage(contact.id)} className="ml-auto text-destructive hover:bg-destructive hover:text-destructive-foreground">
+                    <Trash2 size={14} className="mr-1" />Delete
                   </Button>
                 </div>
               </div>
@@ -866,11 +927,7 @@ const Admin = () => {
         {activeTab === "testimonials" && (
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2 mb-4">
-              <Button
-                variant="outline"
-                size="sm"
-                className={pendingTestimonials > 0 ? "border-yellow-500 text-yellow-600" : ""}
-              >
+              <Button variant="outline" size="sm" className={pendingTestimonials > 0 ? "border-yellow-500 text-yellow-600" : ""}>
                 Pending: {pendingTestimonials}
               </Button>
               <Button variant="outline" size="sm">
@@ -883,18 +940,11 @@ const Admin = () => {
             </div>
             
             {testimonials.map((testimonial) => (
-              <div 
-                key={testimonial.id} 
-                className={`bg-card rounded-xl shadow-card p-4 sm:p-6 overflow-hidden ${!testimonial.is_approved ? "border-l-4 border-yellow-500" : "border-l-4 border-green-500"}`}
-              >
+              <div key={testimonial.id} className={`bg-card rounded-xl shadow-card p-4 sm:p-6 overflow-hidden ${!testimonial.is_approved ? "border-l-4 border-yellow-500" : "border-l-4 border-green-500"}`}>
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
                   <div className="flex items-start gap-3 min-w-0">
                     {testimonial.image_url && (
-                      <img 
-                        src={testimonial.image_url} 
-                        alt={testimonial.name} 
-                        className="w-12 h-12 rounded-full object-cover flex-shrink-0"
-                      />
+                      <img src={testimonial.image_url} alt={testimonial.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
                     )}
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -906,7 +956,6 @@ const Admin = () => {
                         )}
                       </div>
                       {testimonial.role && <p className="text-sm text-primary">{testimonial.role}</p>}
-                      {testimonial.email && <p className="text-sm text-muted-foreground truncate">{testimonial.email}</p>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -915,50 +964,26 @@ const Admin = () => {
                         <Star key={i} className="w-4 h-4 fill-primary text-primary" />
                       ))}
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(testimonial.created_at).toLocaleDateString()}
-                    </span>
                   </div>
                 </div>
                 
                 <p className="text-muted-foreground mb-4 break-words">"{testimonial.content}"</p>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openTestimonialModal(testimonial)}
-                  >
-                    <Edit2 size={14} className="mr-1" />
-                    Edit
+                  <Button size="sm" variant="outline" onClick={() => openTestimonialModal(testimonial)}>
+                    <Edit2 size={14} className="mr-1" />Edit
                   </Button>
                   {testimonial.is_approved ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleApproveTestimonial(testimonial.id, false)}
-                    >
-                      <XCircle size={14} className="mr-1" />
-                      Unapprove
+                    <Button size="sm" variant="outline" onClick={() => handleApproveTestimonial(testimonial.id, false)}>
+                      <XCircle size={14} className="mr-1" />Unapprove
                     </Button>
                   ) : (
-                    <Button
-                      size="sm"
-                      variant="default"
-                      onClick={() => handleApproveTestimonial(testimonial.id, true)}
-                    >
-                      <Check size={14} className="mr-1" />
-                      Approve
+                    <Button size="sm" variant="default" onClick={() => handleApproveTestimonial(testimonial.id, true)}>
+                      <Check size={14} className="mr-1" />Approve
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDeleteTestimonial(testimonial.id)}
-                    className="ml-auto text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  >
-                    <Trash2 size={14} className="mr-1" />
-                    Delete
+                  <Button size="sm" variant="outline" onClick={() => handleDeleteTestimonial(testimonial.id)} className="ml-auto text-destructive hover:bg-destructive hover:text-destructive-foreground">
+                    <Trash2 size={14} className="mr-1" />Delete
                   </Button>
                 </div>
               </div>
@@ -975,7 +1000,7 @@ const Admin = () => {
         {activeTab === "analytics" && (
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <div className="bg-card rounded-xl shadow-card p-6">
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Package className="text-primary" size={20} />
                 </div>
@@ -986,7 +1011,7 @@ const Admin = () => {
               </div>
             </div>
             <div className="bg-card rounded-xl shadow-card p-6">
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Calendar className="text-primary" size={20} />
                 </div>
@@ -997,7 +1022,7 @@ const Admin = () => {
               </div>
             </div>
             <div className="bg-card rounded-xl shadow-card p-6">
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
                   <Clock className="text-yellow-500" size={20} />
                 </div>
@@ -1008,7 +1033,7 @@ const Admin = () => {
               </div>
             </div>
             <div className="bg-card rounded-xl shadow-card p-6">
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
                   <Mail className="text-destructive" size={20} />
                 </div>
@@ -1018,98 +1043,317 @@ const Admin = () => {
                 </div>
               </div>
             </div>
-            
-            <div className="col-span-full bg-card rounded-xl shadow-card p-6">
-              <h3 className="font-semibold text-foreground mb-4">Recent Activity</h3>
-              <div className="space-y-3">
-                {[...bookings.slice(0, 3), ...contacts.slice(0, 2)].sort((a, b) => 
-                  new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                ).slice(0, 5).map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-3 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
-                    <span className="text-muted-foreground truncate">
-                      {'customer_name' in item ? `Booking from ${item.customer_name}` : `Message from ${item.name}`}
-                    </span>
-                    <span className="text-xs text-muted-foreground ml-auto flex-shrink-0">
-                      {new Date(item.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-sm text-muted-foreground mt-4">
-                Note: Detailed visitor analytics requires integration with a service like Google Analytics or Plausible.
-              </p>
-            </div>
           </div>
         )}
 
         {/* Settings Tab */}
         {activeTab === "settings" && (
-          <div className="max-w-2xl space-y-6">
-            {/* Account Info */}
-            <div className="bg-card rounded-xl shadow-card p-6">
-              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Settings size={20} />
-                Account Information
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm text-muted-foreground">Email</label>
-                  <p className="text-foreground font-medium">{user?.email}</p>
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground">User ID</label>
-                  <p className="text-foreground font-mono text-sm break-all">{user?.id}</p>
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground">Last Sign In</label>
-                  <p className="text-foreground">{user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'N/A'}</p>
-                </div>
-              </div>
+          <div className="max-w-4xl">
+            {/* Settings sub-tabs */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              <Button variant={settingsTab === "account" ? "default" : "outline"} size="sm" onClick={() => setSettingsTab("account")}>
+                <Key size={16} className="mr-2" />Account
+              </Button>
+              <Button variant={settingsTab === "contacts" ? "default" : "outline"} size="sm" onClick={() => setSettingsTab("contacts")}>
+                <Phone size={16} className="mr-2" />Contacts
+              </Button>
+              <Button variant={settingsTab === "social" ? "default" : "outline"} size="sm" onClick={() => setSettingsTab("social")}>
+                <Globe size={16} className="mr-2" />Social Links
+              </Button>
+              <Button variant={settingsTab === "hero" ? "default" : "outline"} size="sm" onClick={() => setSettingsTab("hero")}>
+                <ImageIcon size={16} className="mr-2" />Hero Images
+              </Button>
             </div>
 
-            {/* Change Password */}
-            <div className="bg-card rounded-xl shadow-card p-6">
-              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Key size={20} />
-                Change Password
-              </h3>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">New Password</label>
-                  <Input
-                    type="password"
-                    value={passwordForm.newPassword}
-                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                    placeholder="Enter new password (min 8 characters)"
-                  />
+            {/* Account Settings */}
+            {settingsTab === "account" && (
+              <div className="space-y-6">
+                <div className="bg-card rounded-xl shadow-card p-6">
+                  <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Settings size={20} />Account Information
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm text-muted-foreground">Email</label>
+                      <p className="text-foreground font-medium">{user?.email}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-muted-foreground">Last Sign In</label>
+                      <p className="text-foreground">{user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'N/A'}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Confirm New Password</label>
-                  <Input
-                    type="password"
-                    value={passwordForm.confirmPassword}
-                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                    placeholder="Confirm new password"
-                  />
+
+                <div className="bg-card rounded-xl shadow-card p-6">
+                  <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Key size={20} />Change Password
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">New Password</label>
+                      <Input
+                        type="password"
+                        value={passwordForm.newPassword}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                        placeholder="Enter new password (min 8 characters)"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Confirm New Password</label>
+                      <Input
+                        type="password"
+                        value={passwordForm.confirmPassword}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                        placeholder="Confirm new password"
+                      />
+                    </div>
+                    <Button onClick={handleChangePassword} disabled={changingPassword}>
+                      {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Update Password
+                    </Button>
+                  </div>
                 </div>
-                <Button onClick={handleChangePassword} disabled={changingPassword}>
-                  {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Update Password
+              </div>
+            )}
+
+            {/* Contacts Settings */}
+            {settingsTab === "contacts" && (
+              <div className="space-y-6">
+                <div className="bg-card rounded-xl shadow-card p-6">
+                  <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Phone size={20} />Contact Numbers
+                  </h3>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Primary Phone</label>
+                      <Input
+                        value={contactsForm.phone}
+                        onChange={(e) => setContactsForm({ ...contactsForm, phone: e.target.value })}
+                        placeholder="+260 97 6700776"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Secondary Phone</label>
+                      <Input
+                        value={contactsForm.phoneSecondary}
+                        onChange={(e) => setContactsForm({ ...contactsForm, phoneSecondary: e.target.value })}
+                        placeholder="+260 974366406"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Email</label>
+                      <Input
+                        type="email"
+                        value={contactsForm.email}
+                        onChange={(e) => setContactsForm({ ...contactsForm, email: e.target.value })}
+                        placeholder="queenstopdrive@gmail.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">WhatsApp Number (raw)</label>
+                      <Input
+                        value={contactsForm.whatsappRaw}
+                        onChange={(e) => setContactsForm({ ...contactsForm, whatsappRaw: e.target.value })}
+                        placeholder="260976700776"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-card rounded-xl shadow-card p-6">
+                  <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <MapPin size={20} />Address
+                  </h3>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2 sm:col-span-2">
+                      <label className="text-sm font-medium text-foreground">Street Address</label>
+                      <Input
+                        value={addressForm.street}
+                        onChange={(e) => setAddressForm({ ...addressForm, street: e.target.value })}
+                        placeholder="A/35/2, Makeni Bonaventure, plot 50a"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">City</label>
+                      <Input
+                        value={addressForm.city}
+                        onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                        placeholder="Lusaka"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Postal Code</label>
+                      <Input
+                        value={addressForm.zip}
+                        onChange={(e) => setAddressForm({ ...addressForm, zip: e.target.value })}
+                        placeholder="10101"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Country</label>
+                      <Input
+                        value={addressForm.country}
+                        onChange={(e) => setAddressForm({ ...addressForm, country: e.target.value })}
+                        placeholder="Zambia"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Map URL</label>
+                      <Input
+                        value={addressForm.mapUrl}
+                        onChange={(e) => setAddressForm({ ...addressForm, mapUrl: e.target.value })}
+                        placeholder="https://maps.google.com/..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Button onClick={handleSaveContacts} disabled={savingConfig}>
+                  {savingConfig && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Save size={16} className="mr-2" />Save Contact Info
                 </Button>
               </div>
-            </div>
+            )}
 
-            {/* Security Notice */}
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-6">
-              <h3 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">Security Tips</h3>
-              <ul className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
-                <li>• Use a strong, unique password with at least 8 characters</li>
-                <li>• Include uppercase, lowercase, numbers, and special characters</li>
-                <li>• Never share your admin credentials with anyone</li>
-                <li>• Log out after each session on shared devices</li>
-              </ul>
-            </div>
+            {/* Social Settings */}
+            {settingsTab === "social" && (
+              <div className="space-y-6">
+                <div className="bg-card rounded-xl shadow-card p-6">
+                  <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Globe size={20} />Social Media Links
+                  </h3>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Facebook</label>
+                      <Input
+                        value={socialForm.facebook}
+                        onChange={(e) => setSocialForm({ ...socialForm, facebook: e.target.value })}
+                        placeholder="https://facebook.com/queenstop"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Instagram</label>
+                      <Input
+                        value={socialForm.instagram}
+                        onChange={(e) => setSocialForm({ ...socialForm, instagram: e.target.value })}
+                        placeholder="https://instagram.com/queenstop"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Twitter/X</label>
+                      <Input
+                        value={socialForm.twitter}
+                        onChange={(e) => setSocialForm({ ...socialForm, twitter: e.target.value })}
+                        placeholder="https://twitter.com/queenstop"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">YouTube</label>
+                      <Input
+                        value={socialForm.youtube}
+                        onChange={(e) => setSocialForm({ ...socialForm, youtube: e.target.value })}
+                        placeholder="https://youtube.com/queenstop"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Button onClick={handleSaveSocial} disabled={savingConfig}>
+                  {savingConfig && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Save size={16} className="mr-2" />Save Social Links
+                </Button>
+              </div>
+            )}
+
+            {/* Hero Images Settings */}
+            {settingsTab === "hero" && (
+              <div className="space-y-6">
+                <div className="bg-card rounded-xl shadow-card p-6">
+                  <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <ImageIcon size={20} />Hero Carousel Images
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Add custom hero images for the homepage carousel. Leave empty to use default images.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    {heroImages.map((image, idx) => (
+                      <div key={idx} className="border border-border rounded-lg p-4">
+                        <div className="flex gap-4 mb-4">
+                          {image.url && (
+                            <img src={image.url} alt={image.alt} className="w-24 h-24 object-cover rounded-lg" />
+                          )}
+                          <div className="flex-1 space-y-2">
+                            <Input
+                              value={image.url}
+                              onChange={(e) => {
+                                const newImages = [...heroImages];
+                                newImages[idx].url = e.target.value;
+                                setHeroImages(newImages);
+                              }}
+                              placeholder="Image URL"
+                            />
+                            <Input
+                              value={image.alt}
+                              onChange={(e) => {
+                                const newImages = [...heroImages];
+                                newImages[idx].alt = e.target.value;
+                                setHeroImages(newImages);
+                              }}
+                              placeholder="Alt text"
+                            />
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => setHeroImages(heroImages.filter((_, i) => i !== idx))}>
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
+                        <div className="grid sm:grid-cols-3 gap-2">
+                          <Input
+                            value={image.headline}
+                            onChange={(e) => {
+                              const newImages = [...heroImages];
+                              newImages[idx].headline = e.target.value;
+                              setHeroImages(newImages);
+                            }}
+                            placeholder="Headline (e.g., 'Enjoy Your')"
+                          />
+                          <Input
+                            value={image.highlightText}
+                            onChange={(e) => {
+                              const newImages = [...heroImages];
+                              newImages[idx].highlightText = e.target.value;
+                              setHeroImages(newImages);
+                            }}
+                            placeholder="Highlight Text"
+                          />
+                          <Input
+                            value={image.subtitle}
+                            onChange={(e) => {
+                              const newImages = [...heroImages];
+                              newImages[idx].subtitle = e.target.value;
+                              setHeroImages(newImages);
+                            }}
+                            placeholder="Subtitle"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setHeroImages([...heroImages, { url: "", alt: "", headline: "", highlightText: "", subtitle: "" }])}
+                    >
+                      <Plus size={16} className="mr-2" />Add Hero Image
+                    </Button>
+                  </div>
+                </div>
+
+                <Button onClick={handleSaveHeroImages} disabled={savingConfig}>
+                  {savingConfig && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Save size={16} className="mr-2" />Save Hero Images
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1147,7 +1391,7 @@ const Admin = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Price *</label>
+                  <label className="text-sm font-medium text-foreground">Price (K) *</label>
                   <Input
                     type="number"
                     value={productForm.price}
@@ -1168,25 +1412,57 @@ const Admin = () => {
                   </select>
                 </div>
               </div>
+              
+              {/* Route Tags (for cars) */}
+              {productForm.category === "car" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Available Routes</label>
+                  <div className="flex gap-3">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={productForm.route_tags.includes("local")}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setProductForm({ ...productForm, route_tags: [...productForm.route_tags, "local"] });
+                          } else {
+                            setProductForm({ ...productForm, route_tags: productForm.route_tags.filter(t => t !== "local") });
+                          }
+                        }}
+                        className="rounded"
+                      />
+                      <span className="text-sm">Local Routes</span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={productForm.route_tags.includes("outside")}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setProductForm({ ...productForm, route_tags: [...productForm.route_tags, "outside"] });
+                          } else {
+                            setProductForm({ ...productForm, route_tags: productForm.route_tags.filter(t => t !== "outside") });
+                          }
+                        }}
+                        className="rounded"
+                      />
+                      <span className="text-sm">Outside Lusaka</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Main Image */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Product Image</label>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleImageUpload}
-                  accept="image/*"
-                  className="hidden"
-                />
+                <label className="text-sm font-medium text-foreground">Main Image (1:1 ratio)</label>
+                <input type="file" ref={fileInputRef} onChange={(e) => handleImageUpload(e, true)} accept="image/*" className="hidden" />
                 <div className="flex flex-col gap-3">
                   {imagePreview ? (
-                    <div className="relative w-full h-40 rounded-lg overflow-hidden bg-muted">
+                    <div className="relative w-full aspect-square max-w-[200px] rounded-lg overflow-hidden bg-muted">
                       <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                       <button
                         type="button"
-                        onClick={() => {
-                          setImagePreview(null);
-                          setProductForm({ ...productForm, image_url: "" });
-                        }}
+                        onClick={() => { setImagePreview(null); setProductForm({ ...productForm, image_url: "" }); }}
                         className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90"
                       >
                         <X size={16} />
@@ -1195,7 +1471,7 @@ const Admin = () => {
                   ) : (
                     <div
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full h-40 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
+                      className="w-full aspect-square max-w-[200px] border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
                     >
                       {uploadingImage ? (
                         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -1207,18 +1483,36 @@ const Admin = () => {
                       )}
                     </div>
                   )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingImage}
-                  >
-                    {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload size={16} className="mr-2" />}
-                    {imagePreview ? "Change" : "Upload"}
-                  </Button>
                 </div>
               </div>
+
+              {/* Additional Images */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Additional Images</label>
+                <input type="file" ref={multiImageInputRef} onChange={(e) => handleImageUpload(e, false)} accept="image/*" className="hidden" />
+                <div className="flex flex-wrap gap-2">
+                  {productForm.images.map((img, idx) => (
+                    <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden">
+                      <img src={img} alt={`Additional ${idx + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeAdditionalImage(idx)}
+                        className="absolute top-1 right-1 p-0.5 bg-destructive text-destructive-foreground rounded-full"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => multiImageInputRef.current?.click()}
+                    className="w-20 h-20 border-2 border-dashed border-border rounded-lg flex items-center justify-center hover:border-primary/50"
+                  >
+                    <Plus size={24} className="text-muted-foreground" />
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Features (comma separated)</label>
                 <Input
@@ -1278,7 +1572,7 @@ const Admin = () => {
                 <Input
                   value={testimonialForm.role}
                   onChange={(e) => setTestimonialForm({ ...testimonialForm, role: e.target.value })}
-                  placeholder="e.g., Business Owner, Wedding Planner"
+                  placeholder="e.g., Business Owner"
                 />
               </div>
               <div className="space-y-2">
@@ -1286,7 +1580,7 @@ const Admin = () => {
                 <textarea
                   value={testimonialForm.content}
                   onChange={(e) => setTestimonialForm({ ...testimonialForm, content: e.target.value })}
-                  placeholder="What did they say about your service?"
+                  placeholder="What did they say?"
                   rows={4}
                   className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary outline-none resize-none"
                 />
@@ -1295,15 +1589,8 @@ const Admin = () => {
                 <label className="text-sm font-medium text-foreground">Rating</label>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setTestimonialForm({ ...testimonialForm, rating: star })}
-                      className="p-1"
-                    >
-                      <Star 
-                        className={`w-6 h-6 ${star <= testimonialForm.rating ? "fill-primary text-primary" : "text-muted-foreground"}`} 
-                      />
+                    <button key={star} type="button" onClick={() => setTestimonialForm({ ...testimonialForm, rating: star })} className="p-1">
+                      <Star className={`w-6 h-6 ${star <= testimonialForm.rating ? "fill-primary text-primary" : "text-muted-foreground"}`} />
                     </button>
                   ))}
                 </div>
@@ -1346,36 +1633,29 @@ const Admin = () => {
         <div className="fixed inset-0 bg-charcoal/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-card rounded-2xl shadow-elevated w-full max-w-lg my-4">
             <div className="p-4 sm:p-6 border-b border-border flex items-center justify-between">
-              <h2 className="text-lg sm:text-xl font-display font-bold text-foreground">
-                Reply to {replyingTo.name}
-              </h2>
+              <h2 className="text-lg sm:text-xl font-display font-bold text-foreground">Reply to {replyingTo.name}</h2>
               <button onClick={() => setReplyModalOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X size={24} />
               </button>
             </div>
-            <div className="p-4 sm:p-6 space-y-4">
-              <div className="bg-muted/50 p-3 rounded-lg">
+            <div className="p-4 sm:p-6">
+              <div className="bg-muted/50 p-3 rounded-lg mb-4">
                 <p className="text-sm text-muted-foreground mb-1">Original message:</p>
-                <p className="text-foreground break-words">{replyingTo.message}</p>
+                <p className="text-foreground">{replyingTo.message}</p>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Your Reply</label>
-                <textarea
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Type your reply..."
-                  rows={4}
-                  className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary outline-none resize-none"
-                />
-              </div>
+              <textarea
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                placeholder="Type your reply..."
+                rows={4}
+                className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary outline-none resize-none"
+              />
             </div>
             <div className="p-4 sm:p-6 border-t border-border flex gap-3">
-              <Button variant="outline" onClick={() => setReplyModalOpen(false)} className="flex-1">
-                Cancel
-              </Button>
-              <Button onClick={handleSendReply} disabled={sendingReply || !replyText.trim()} className="flex-1">
+              <Button variant="outline" onClick={() => setReplyModalOpen(false)} className="flex-1">Cancel</Button>
+              <Button onClick={handleSendReply} disabled={sendingReply} className="flex-1">
                 {sendingReply && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Reply
+                <Save size={16} className="mr-2" />Save Reply
               </Button>
             </div>
           </div>

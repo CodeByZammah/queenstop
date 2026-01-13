@@ -2,10 +2,14 @@ import { useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import BookingModal from "@/components/BookingModal";
+import ProductImageModal from "@/components/ProductImageModal";
 import { Button } from "@/components/ui/button";
-import { Car, Shield, Clock, Award, Users, MapPin, Calendar, Phone, MessageCircle, ArrowRight, Check, Loader2 } from "lucide-react";
+import { Car, Shield, Clock, Award, Users, Calendar, Phone, MessageCircle, ArrowRight, Check, Loader2, MapPin, Route } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
+import { formatKwacha, generateWhatsAppLink } from "@/hooks/useSiteConfig";
+import { siteConfig } from "@/config/siteConfig";
 import heroCar from "@/assets/hero-car.jpg";
+import { cn } from "@/lib/utils";
 
 const features = [
   { icon: Shield, title: "Fully Insured", description: "Comprehensive coverage for peace of mind" },
@@ -17,10 +21,35 @@ const features = [
 const CarHire = () => {
   const { products: cars, loading } = useProducts("car");
   const [selectedCar, setSelectedCar] = useState<{ id: string; name: string } | null>(null);
+  const [routeType, setRouteType] = useState<"local" | "outside">("local");
+  const [bookingDate, setBookingDate] = useState("");
+  const [bookingTime, setBookingTime] = useState("");
   
-  const whatsappNumber = "+1234567890";
-  const whatsappMessage = encodeURIComponent("Hello! I'm interested in booking a car.");
-  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
+  // Image modal state
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedProductName, setSelectedProductName] = useState("");
+  
+  const whatsappLink = generateWhatsAppLink(
+    siteConfig.admin.whatsappRaw, 
+    "+260", 
+    "Hello! I'm interested in booking a car."
+  );
+
+  const openImageModal = (car: { name: string; image_url: string | null; images?: string[] | null }) => {
+    const allImages: string[] = [];
+    if (car.image_url) allImages.push(car.image_url);
+    if (car.images?.length) {
+      car.images.forEach(img => {
+        if (!allImages.includes(img)) allImages.push(img);
+      });
+    }
+    if (allImages.length === 0) allImages.push(heroCar);
+    
+    setSelectedImages(allImages);
+    setSelectedProductName(car.name);
+    setImageModalOpen(true);
+  };
 
   return (
     <div className="min-h-screen">
@@ -53,39 +82,75 @@ const CarHire = () => {
                   Book via WhatsApp
                 </Button>
               </a>
-              <Button variant="outline" size="lg" className="rounded-full border-background text-background hover:bg-background hover:text-foreground">
-                <Phone size={20} className="mr-2" />
-                Call Us
-              </Button>
+              <a href={`tel:${siteConfig.phoneRaw}`}>
+                <Button variant="outline" size="lg" className="rounded-full border-background text-background hover:bg-background hover:text-foreground">
+                  <Phone size={20} className="mr-2" />
+                  Call Us
+                </Button>
+              </a>
             </div>
           </div>
         </section>
 
-        {/* Booking Form Section */}
+        {/* Booking Form Section - Simplified */}
         <section className="py-16 bg-gradient-champagne -mt-20 relative z-20">
           <div className="container mx-auto px-4">
             <div className="bg-card rounded-2xl shadow-elevated p-8 max-w-4xl mx-auto">
               <h2 className="text-2xl font-display font-bold text-foreground mb-6 text-center">Quick Booking</h2>
               <form className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Pick-up Location</label>
-                  <div className="flex items-center gap-2 p-3 border border-border rounded-lg bg-background">
-                    <MapPin size={18} className="text-primary" />
-                    <input type="text" placeholder="Enter location" className="flex-1 bg-transparent outline-none text-foreground" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Drop-off Location</label>
-                  <div className="flex items-center gap-2 p-3 border border-border rounded-lg bg-background">
-                    <MapPin size={18} className="text-primary" />
-                    <input type="text" placeholder="Enter location" className="flex-1 bg-transparent outline-none text-foreground" />
+                  <label className="text-sm font-medium text-muted-foreground">Route Type</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRouteType("local")}
+                      className={cn(
+                        "flex-1 p-3 border rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2",
+                        routeType === "local"
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background border-border text-foreground hover:border-primary/50"
+                      )}
+                    >
+                      <MapPin size={16} />
+                      Local
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRouteType("outside")}
+                      className={cn(
+                        "flex-1 p-3 border rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2",
+                        routeType === "outside"
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background border-border text-foreground hover:border-primary/50"
+                      )}
+                    >
+                      <Route size={16} />
+                      Outside Lusaka
+                    </button>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Date</label>
                   <div className="flex items-center gap-2 p-3 border border-border rounded-lg bg-background">
                     <Calendar size={18} className="text-primary" />
-                    <input type="date" className="flex-1 bg-transparent outline-none text-foreground" />
+                    <input 
+                      type="date" 
+                      value={bookingDate}
+                      onChange={(e) => setBookingDate(e.target.value)}
+                      className="flex-1 bg-transparent outline-none text-foreground" 
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Time</label>
+                  <div className="flex items-center gap-2 p-3 border border-border rounded-lg bg-background">
+                    <Clock size={18} className="text-primary" />
+                    <input 
+                      type="time" 
+                      value={bookingTime}
+                      onChange={(e) => setBookingTime(e.target.value)}
+                      className="flex-1 bg-transparent outline-none text-foreground" 
+                    />
                   </div>
                 </div>
                 <div className="flex items-end">
@@ -139,45 +204,75 @@ const CarHire = () => {
               <p className="text-center text-muted-foreground">No vehicles available at the moment.</p>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {cars.map((car) => (
-                  <div key={car.id} className="bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-elevated transition-elegant group">
-                    <div className="relative h-56 overflow-hidden">
-                      <img 
-                        src={car.image_url || heroCar} 
-                        alt={car.name} 
-                        className="w-full h-full object-cover transition-elegant group-hover:scale-110" 
-                      />
-                      <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-primary/90 text-primary-foreground text-xs font-medium">
-                        Car Hire
+                {cars.map((car) => {
+                  const routeTags = (car as any).route_tags as string[] | null;
+                  const images = (car as any).images as string[] | null;
+                  const hasMultipleImages = (images?.length || 0) > 0 || car.image_url;
+                  
+                  return (
+                    <div key={car.id} className="bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-elevated transition-elegant group">
+                      <div 
+                        className="relative h-56 overflow-hidden cursor-pointer"
+                        onClick={() => openImageModal({ name: car.name, image_url: car.image_url, images })}
+                      >
+                        <img 
+                          src={car.image_url || heroCar} 
+                          alt={car.name} 
+                          className="w-full h-full object-cover aspect-square transition-elegant group-hover:scale-110" 
+                        />
+                        {/* Route tags */}
+                        <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+                          {routeTags?.includes("local") && (
+                            <span className="px-3 py-1 rounded-full bg-green-600/90 text-white text-xs font-medium">
+                              Local Routes
+                            </span>
+                          )}
+                          {routeTags?.includes("outside") && (
+                            <span className="px-3 py-1 rounded-full bg-blue-600/90 text-white text-xs font-medium">
+                              Outside Lusaka
+                            </span>
+                          )}
+                          {!routeTags?.length && (
+                            <span className="px-3 py-1 rounded-full bg-primary/90 text-primary-foreground text-xs font-medium">
+                              Car Hire
+                            </span>
+                          )}
+                        </div>
+                        {/* Multiple images indicator */}
+                        {images && images.length > 0 && (
+                          <div className="absolute bottom-4 right-4 px-2 py-1 rounded bg-background/80 text-foreground text-xs">
+                            +{images.length} photos
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-6">
+                        <h3 className="text-xl font-display font-semibold text-foreground mb-2">{car.name}</h3>
+                        <p className="text-primary font-bold text-lg mb-4">From {formatKwacha(car.price)}/day</p>
+                        {car.features && car.features.length > 0 && (
+                          <ul className="space-y-2 mb-6">
+                            {car.features.slice(0, 4).map((feature, idx) => (
+                              <li key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Check size={16} className="text-primary" />
+                                {feature}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {car.description && !car.features?.length && (
+                          <p className="text-muted-foreground text-sm mb-6">{car.description}</p>
+                        )}
+                        <Button 
+                          variant="outline" 
+                          className="w-full group"
+                          onClick={() => setSelectedCar({ id: car.id, name: car.name })}
+                        >
+                          Book Now
+                          <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={16} />
+                        </Button>
                       </div>
                     </div>
-                    <div className="p-6">
-                      <h3 className="text-xl font-display font-semibold text-foreground mb-2">{car.name}</h3>
-                      <p className="text-primary font-bold text-lg mb-4">From ${car.price}/day</p>
-                      {car.features && car.features.length > 0 && (
-                        <ul className="space-y-2 mb-6">
-                          {car.features.slice(0, 4).map((feature, idx) => (
-                            <li key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Check size={16} className="text-primary" />
-                              {feature}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {car.description && !car.features?.length && (
-                        <p className="text-muted-foreground text-sm mb-6">{car.description}</p>
-                      )}
-                      <Button 
-                        variant="outline" 
-                        className="w-full group"
-                        onClick={() => setSelectedCar({ id: car.id, name: car.name })}
-                      >
-                        Book Now
-                        <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={16} />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -210,6 +305,13 @@ const CarHire = () => {
         productName={selectedCar?.name}
         productId={selectedCar?.id}
         category="car"
+      />
+      
+      <ProductImageModal
+        images={selectedImages}
+        productName={selectedProductName}
+        isOpen={imageModalOpen}
+        onClose={() => setImageModalOpen(false)}
       />
     </div>
   );
