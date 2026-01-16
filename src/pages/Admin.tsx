@@ -8,12 +8,12 @@ import {
   Plus, LogOut, Car, Gem, Heart, Loader2, Trash2, Edit2, 
   Package, Mail, Calendar, X, Save, Upload, Image as ImageIcon,
   Check, XCircle, Clock, Eye, EyeOff, MessageSquare, BarChart3, Star,
-  Settings, Key, Globe, Phone, MapPin, ExternalLink
+  Settings, Key, Globe, Phone, MapPin, ExternalLink, Users, UserPlus, FileText
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import type { User } from "@supabase/supabase-js";
 import { getSafeErrorMessage } from "@/lib/error-handler";
-import { formatKwacha, generateWhatsAppLink, useSiteConfig, type SiteContacts, type SiteAddress, type SiteSocial, type HeroImage } from "@/hooks/useSiteConfig";
+import { formatKwacha, generateWhatsAppLink, useSiteConfig, type SiteContacts, type SiteAddress, type SiteSocial, type HeroImage, type SiteContent } from "@/hooks/useSiteConfig";
 
 type ProductCategory = "car" | "jewellery" | "wedding";
 type BookingStatus = "pending" | "completed" | "cancelled";
@@ -74,6 +74,12 @@ interface Testimonial {
   created_at: string;
 }
 
+interface AdminUser {
+  user_id: string;
+  email: string;
+  role: string;
+}
+
 const Admin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -86,6 +92,7 @@ const Admin = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [contacts, setContacts] = useState<ContactSubmission[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
@@ -125,14 +132,17 @@ const Admin = () => {
 
   // Password change state
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
   const [changingPassword, setChangingPassword] = useState(false);
 
+  // Admin management state
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [addingAdmin, setAddingAdmin] = useState(false);
+
   // Site config editing state
-  const [settingsTab, setSettingsTab] = useState<"account" | "contacts" | "social" | "hero">("account");
+  const [settingsTab, setSettingsTab] = useState<"account" | "admins" | "contacts" | "social" | "hero" | "content">("account");
   const [contactsForm, setContactsForm] = useState<SiteContacts>({
     phone: "",
     phoneSecondary: "",
@@ -154,6 +164,13 @@ const Admin = () => {
     youtube: "",
   });
   const [heroImages, setHeroImages] = useState<HeroImage[]>([]);
+  const [contentForm, setContentForm] = useState<SiteContent>({
+    mission: "",
+    vision: "",
+    about_title: "",
+    about_description: "",
+    about_extended: "",
+  });
   const [savingConfig, setSavingConfig] = useState(false);
 
   useEffect(() => {
@@ -184,6 +201,7 @@ const Admin = () => {
       setUser(session.user);
       setLoading(false);
       fetchData();
+      fetchAdminUsers();
     };
 
     checkAuth();
@@ -205,6 +223,7 @@ const Admin = () => {
     setAddressForm(config.address);
     setSocialForm(config.social);
     setHeroImages(config.hero_images || []);
+    setContentForm(config.site_content);
   }, [config]);
 
   const fetchData = async () => {
@@ -231,6 +250,25 @@ const Admin = () => {
       .select("*")
       .order("created_at", { ascending: false });
     if (testimonialsData) setTestimonials(testimonialsData as Testimonial[]);
+  };
+
+  const fetchAdminUsers = async () => {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('user_id, role')
+      .eq('role', 'admin');
+    
+    if (data && !error) {
+      // We need to get the emails from auth.users - we'll use a workaround
+      // Since we can't directly query auth.users, we'll just show user_ids for now
+      // In production, you'd create a view or function
+      const admins: AdminUser[] = data.map(d => ({
+        user_id: d.user_id,
+        email: d.user_id.slice(0, 8) + '...', // Show partial ID
+        role: d.role
+      }));
+      setAdminUsers(admins);
+    }
   };
 
   const handleLogout = async () => {
@@ -572,11 +610,75 @@ const Admin = () => {
       if (error) throw error;
 
       toast({ title: "Success", description: "Password updated successfully!" });
-      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setPasswordForm({ newPassword: "", confirmPassword: "" });
     } catch (error: unknown) {
       toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
     } finally {
       setChangingPassword(false);
+    }
+  };
+
+  // Admin management handlers
+  const handleAddAdmin = async () => {
+    if (!newAdminEmail.trim()) {
+      toast({ title: "Error", description: "Please enter an email address", variant: "destructive" });
+      return;
+    }
+
+    setAddingAdmin(true);
+    try {
+      // First, we need to get the user ID by email
+      // We'll create an invite-based flow - admin sends invite link with password
+      const tempPassword = Math.random().toString(36).slice(-12) + "A1!";
+      
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: newAdminEmail,
+        password: tempPassword,
+      });
+
+      if (signUpError) throw signUpError;
+
+      if (signUpData.user) {
+        // Add admin role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({ user_id: signUpData.user.id, role: 'admin' });
+
+        if (roleError) throw roleError;
+
+        toast({ 
+          title: "Admin Added", 
+          description: `Admin invite sent to ${newAdminEmail}. Temporary password: ${tempPassword}. Please share this securely and ask them to change it.`,
+        });
+        setNewAdminEmail("");
+        fetchAdminUsers();
+      }
+    } catch (error: unknown) {
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
+    } finally {
+      setAddingAdmin(false);
+    }
+  };
+
+  const handleRemoveAdmin = async (userId: string) => {
+    if (userId === user?.id) {
+      toast({ title: "Error", description: "You cannot remove yourself as admin", variant: "destructive" });
+      return;
+    }
+
+    if (!confirm("Are you sure you want to remove this admin?")) return;
+
+    const { error } = await supabase
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId)
+      .eq('role', 'admin');
+
+    if (error) {
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
+    } else {
+      toast({ title: "Removed", description: "Admin access revoked" });
+      fetchAdminUsers();
     }
   };
 
@@ -611,6 +713,18 @@ const Admin = () => {
     try {
       await updateConfig("hero_images", heroImages);
       toast({ title: "Success", description: "Hero images updated!" });
+    } catch (error) {
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const handleSaveContent = async () => {
+    setSavingConfig(true);
+    try {
+      await updateConfig("site_content", contentForm);
+      toast({ title: "Success", description: "Site content updated!" });
     } catch (error) {
       toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
     } finally {
@@ -872,31 +986,25 @@ const Admin = () => {
         {activeTab === "contacts" && (
           <div className="space-y-4">
             {contacts.map((contact) => (
-              <div key={contact.id} className={`bg-card rounded-xl shadow-card p-4 sm:p-6 overflow-hidden ${!contact.is_read ? "border-l-4 border-primary" : ""}`}>
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-foreground">{contact.name}</h3>
-                      {!contact.is_read && (
-                        <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">New</span>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground truncate">{contact.email} • {contact.phone}</p>
+              <div key={contact.id} className={`bg-card rounded-xl shadow-card p-4 sm:p-6 ${!contact.is_read ? 'border-l-4 border-primary' : ''}`}>
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
+                  <div>
+                    <h3 className="font-semibold text-foreground">{contact.name}</h3>
+                    <p className="text-sm text-muted-foreground">{contact.email}</p>
+                    {contact.phone && <p className="text-sm text-muted-foreground">{contact.phone}</p>}
                   </div>
-                  <span className="text-xs text-muted-foreground flex-shrink-0">
-                    {new Date(contact.created_at).toLocaleDateString()}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{new Date(contact.created_at).toLocaleDateString()}</span>
+                    {!contact.is_read && <span className="text-xs px-2 py-1 rounded-full bg-primary text-primary-foreground">New</span>}
+                  </div>
                 </div>
-                
-                {contact.subject && (
-                  <p className="text-sm font-medium text-foreground mb-2 break-words">{contact.subject}</p>
-                )}
-                <p className="text-muted-foreground mb-4 break-words">{contact.message}</p>
+                {contact.subject && <p className="text-sm font-medium text-foreground mb-2">{contact.subject}</p>}
+                <p className="text-muted-foreground mb-4">{contact.message}</p>
                 
                 {contact.admin_reply && (
                   <div className="bg-muted/50 p-3 rounded-lg mb-4">
-                    <p className="text-xs text-muted-foreground mb-1">Your reply ({contact.replied_at ? new Date(contact.replied_at).toLocaleDateString() : ""}):</p>
-                    <p className="text-sm text-foreground break-words">{contact.admin_reply}</p>
+                    <p className="text-xs text-muted-foreground mb-1">Your reply:</p>
+                    <p className="text-sm text-foreground">{contact.admin_reply}</p>
                   </div>
                 )}
 
@@ -906,8 +1014,7 @@ const Admin = () => {
                     {contact.is_read ? "Mark Unread" : "Mark Read"}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => openReplyModal(contact)}>
-                    <MessageSquare size={14} className="mr-1" />
-                    {contact.admin_reply ? "Edit Reply" : "Reply"}
+                    <MessageSquare size={14} className="mr-1" />Reply
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => handleDeleteMessage(contact.id)} className="ml-auto text-destructive hover:bg-destructive hover:text-destructive-foreground">
                     <Trash2 size={14} className="mr-1" />Delete
@@ -925,75 +1032,55 @@ const Admin = () => {
 
         {/* Testimonials Tab */}
         {activeTab === "testimonials" && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-2 mb-4">
-              <Button variant="outline" size="sm" className={pendingTestimonials > 0 ? "border-yellow-500 text-yellow-600" : ""}>
-                Pending: {pendingTestimonials}
-              </Button>
-              <Button variant="outline" size="sm">
-                Approved: {testimonials.filter(t => t.is_approved).length}
-              </Button>
-              <Button size="sm" onClick={() => openTestimonialModal()} className="ml-auto">
-                <Plus size={18} className="mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Add Testimonial</span>
+          <>
+            <div className="flex justify-end mb-6">
+              <Button size="sm" onClick={() => openTestimonialModal()}>
+                <Plus size={18} className="mr-2" />Add Testimonial
               </Button>
             </div>
-            
-            {testimonials.map((testimonial) => (
-              <div key={testimonial.id} className={`bg-card rounded-xl shadow-card p-4 sm:p-6 overflow-hidden ${!testimonial.is_approved ? "border-l-4 border-yellow-500" : "border-l-4 border-green-500"}`}>
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
-                  <div className="flex items-start gap-3 min-w-0">
-                    {testimonial.image_url && (
-                      <img src={testimonial.image_url} alt={testimonial.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-foreground">{testimonial.name}</h3>
-                        {testimonial.is_approved ? (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Approved</span>
-                        ) : (
-                          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Pending</span>
-                        )}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {testimonials.map((testimonial) => (
+                <div key={testimonial.id} className={`bg-card rounded-xl shadow-card p-4 sm:p-6 ${!testimonial.is_approved ? 'border-l-4 border-yellow-500' : ''}`}>
+                  <div className="flex items-start gap-3 mb-3">
+                    {testimonial.image_url ? (
+                      <img src={testimonial.image_url} alt={testimonial.name} className="w-12 h-12 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                        <Star className="text-muted-foreground" size={20} />
                       </div>
-                      {testimonial.role && <p className="text-sm text-primary">{testimonial.role}</p>}
+                    )}
+                    <div>
+                      <h3 className="font-semibold text-foreground">{testimonial.name}</h3>
+                      {testimonial.role && <p className="text-sm text-muted-foreground">{testimonial.role}</p>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <div className="flex">
-                      {[...Array(testimonial.rating || 5)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-primary text-primary" />
-                      ))}
-                    </div>
+                  <div className="flex gap-0.5 mb-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={16} className={i < (testimonial.rating || 5) ? "fill-primary text-primary" : "text-muted-foreground"} />
+                    ))}
+                  </div>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">{testimonial.content}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => handleApproveTestimonial(testimonial.id, !testimonial.is_approved)}>
+                      {testimonial.is_approved ? <XCircle size={14} className="mr-1" /> : <Check size={14} className="mr-1" />}
+                      {testimonial.is_approved ? "Hide" : "Approve"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => openTestimonialModal(testimonial)}>
+                      <Edit2 size={14} className="mr-1" />Edit
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleDeleteTestimonial(testimonial.id)} className="text-destructive hover:bg-destructive hover:text-destructive-foreground">
+                      <Trash2 size={14} />
+                    </Button>
                   </div>
                 </div>
-                
-                <p className="text-muted-foreground mb-4 break-words">"{testimonial.content}"</p>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => openTestimonialModal(testimonial)}>
-                    <Edit2 size={14} className="mr-1" />Edit
-                  </Button>
-                  {testimonial.is_approved ? (
-                    <Button size="sm" variant="outline" onClick={() => handleApproveTestimonial(testimonial.id, false)}>
-                      <XCircle size={14} className="mr-1" />Unapprove
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="default" onClick={() => handleApproveTestimonial(testimonial.id, true)}>
-                      <Check size={14} className="mr-1" />Approve
-                    </Button>
-                  )}
-                  <Button size="sm" variant="outline" onClick={() => handleDeleteTestimonial(testimonial.id)} className="ml-auto text-destructive hover:bg-destructive hover:text-destructive-foreground">
-                    <Trash2 size={14} className="mr-1" />Delete
-                  </Button>
+              ))}
+              {testimonials.length === 0 && (
+                <div className="col-span-full text-center py-12 text-muted-foreground bg-card rounded-xl">
+                  No testimonials yet
                 </div>
-              </div>
-            ))}
-            {testimonials.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground bg-card rounded-xl">
-                No testimonials submitted yet
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </>
         )}
 
         {/* Analytics Tab */}
@@ -1054,6 +1141,9 @@ const Admin = () => {
               <Button variant={settingsTab === "account" ? "default" : "outline"} size="sm" onClick={() => setSettingsTab("account")}>
                 <Key size={16} className="mr-2" />Account
               </Button>
+              <Button variant={settingsTab === "admins" ? "default" : "outline"} size="sm" onClick={() => setSettingsTab("admins")}>
+                <Users size={16} className="mr-2" />Admins
+              </Button>
               <Button variant={settingsTab === "contacts" ? "default" : "outline"} size="sm" onClick={() => setSettingsTab("contacts")}>
                 <Phone size={16} className="mr-2" />Contacts
               </Button>
@@ -1062,6 +1152,9 @@ const Admin = () => {
               </Button>
               <Button variant={settingsTab === "hero" ? "default" : "outline"} size="sm" onClick={() => setSettingsTab("hero")}>
                 <ImageIcon size={16} className="mr-2" />Hero Images
+              </Button>
+              <Button variant={settingsTab === "content" ? "default" : "outline"} size="sm" onClick={() => setSettingsTab("content")}>
+                <FileText size={16} className="mr-2" />Site Content
               </Button>
             </div>
 
@@ -1111,6 +1204,62 @@ const Admin = () => {
                       {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Update Password
                     </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Admins Settings */}
+            {settingsTab === "admins" && (
+              <div className="space-y-6">
+                <div className="bg-card rounded-xl shadow-card p-6">
+                  <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <UserPlus size={20} />Add New Admin
+                  </h3>
+                  <div className="flex gap-3">
+                    <Input
+                      type="email"
+                      value={newAdminEmail}
+                      onChange={(e) => setNewAdminEmail(e.target.value)}
+                      placeholder="Enter email address"
+                      className="flex-1"
+                    />
+                    <Button onClick={handleAddAdmin} disabled={addingAdmin}>
+                      {addingAdmin && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Add Admin
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    The new admin will receive a temporary password that they should change immediately.
+                  </p>
+                </div>
+
+                <div className="bg-card rounded-xl shadow-card p-6">
+                  <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Users size={20} />Current Admins
+                  </h3>
+                  <div className="space-y-3">
+                    {adminUsers.map((admin) => (
+                      <div key={admin.user_id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div>
+                          <p className="text-foreground font-medium">Admin User</p>
+                          <p className="text-sm text-muted-foreground">ID: {admin.user_id.slice(0, 8)}...</p>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleRemoveAdmin(admin.user_id)}
+                          disabled={admin.user_id === user?.id}
+                          className={admin.user_id === user?.id ? "opacity-50" : "text-destructive hover:bg-destructive hover:text-destructive-foreground"}
+                        >
+                          <Trash2 size={14} className="mr-1" />
+                          {admin.user_id === user?.id ? "You" : "Remove"}
+                        </Button>
+                      </div>
+                    ))}
+                    {adminUsers.length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">No admin users found</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1354,6 +1503,78 @@ const Admin = () => {
                 </Button>
               </div>
             )}
+
+            {/* Site Content Settings */}
+            {settingsTab === "content" && (
+              <div className="space-y-6">
+                <div className="bg-card rounded-xl shadow-card p-6">
+                  <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <FileText size={20} />About Us Content
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">About Title</label>
+                      <Input
+                        value={contentForm.about_title}
+                        onChange={(e) => setContentForm({ ...contentForm, about_title: e.target.value })}
+                        placeholder="The Queenstop Story"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">About Description</label>
+                      <textarea
+                        value={contentForm.about_description}
+                        onChange={(e) => setContentForm({ ...contentForm, about_description: e.target.value })}
+                        placeholder="Brief description of your company..."
+                        rows={3}
+                        className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary outline-none resize-none"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Extended About</label>
+                      <textarea
+                        value={contentForm.about_extended}
+                        onChange={(e) => setContentForm({ ...contentForm, about_extended: e.target.value })}
+                        placeholder="More detailed story..."
+                        rows={4}
+                        className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary outline-none resize-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-card rounded-xl shadow-card p-6">
+                  <h3 className="font-semibold text-foreground mb-4">Mission & Vision</h3>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Mission Statement</label>
+                      <textarea
+                        value={contentForm.mission}
+                        onChange={(e) => setContentForm({ ...contentForm, mission: e.target.value })}
+                        placeholder="Your mission statement..."
+                        rows={3}
+                        className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary outline-none resize-none"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Vision Statement</label>
+                      <textarea
+                        value={contentForm.vision}
+                        onChange={(e) => setContentForm({ ...contentForm, vision: e.target.value })}
+                        placeholder="Your vision statement..."
+                        rows={3}
+                        className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary outline-none resize-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Button onClick={handleSaveContent} disabled={savingConfig}>
+                  {savingConfig && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Save size={16} className="mr-2" />Save Site Content
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1372,7 +1593,7 @@ const Admin = () => {
             </div>
             <div className="p-4 sm:p-6 space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Product Name *</label>
+                <label className="text-sm font-medium text-foreground">Name *</label>
                 <Input
                   value={productForm.name}
                   onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
@@ -1384,7 +1605,7 @@ const Admin = () => {
                 <textarea
                   value={productForm.description}
                   onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                  placeholder="Describe the product..."
+                  placeholder="Brief description..."
                   rows={3}
                   className="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:border-primary outline-none resize-none"
                 />
@@ -1396,7 +1617,7 @@ const Admin = () => {
                     type="number"
                     value={productForm.price}
                     onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
-                    placeholder="0.00"
+                    placeholder="500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1408,16 +1629,16 @@ const Admin = () => {
                   >
                     <option value="car">Car Hire</option>
                     <option value="jewellery">Jewellery</option>
-                    <option value="wedding">Wedding Accessories</option>
+                    <option value="wedding">Wedding</option>
                   </select>
                 </div>
               </div>
-              
-              {/* Route Tags (for cars) */}
+
+              {/* Route tags for cars */}
               {productForm.category === "car" && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Available Routes</label>
-                  <div className="flex gap-3">
+                  <label className="text-sm font-medium text-foreground">Route Availability</label>
+                  <div className="flex gap-4">
                     <label className="flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -1452,51 +1673,45 @@ const Admin = () => {
                 </div>
               )}
 
-              {/* Main Image */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Main Image (1:1 ratio)</label>
-                <input type="file" ref={fileInputRef} onChange={(e) => handleImageUpload(e, true)} accept="image/*" className="hidden" />
-                <div className="flex flex-col gap-3">
+                <label className="text-sm font-medium text-foreground">Main Image</label>
+                <div className="flex gap-3">
                   {imagePreview ? (
-                    <div className="relative w-full aspect-square max-w-[200px] rounded-lg overflow-hidden bg-muted">
-                      <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => { setImagePreview(null); setProductForm({ ...productForm, image_url: "" }); }}
-                        className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
+                    <img src={imagePreview} alt="Preview" className="w-20 h-20 object-cover rounded-lg" />
                   ) : (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full aspect-square max-w-[200px] border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
-                    >
-                      {uploadingImage ? (
-                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                      ) : (
-                        <>
-                          <ImageIcon size={32} className="text-muted-foreground mb-2" />
-                          <span className="text-sm text-muted-foreground">Click to upload</span>
-                        </>
-                      )}
+                    <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center">
+                      <ImageIcon className="text-muted-foreground" size={24} />
                     </div>
                   )}
+                  <div className="flex-1">
+                    <Input
+                      value={productForm.image_url}
+                      onChange={(e) => {
+                        setProductForm({ ...productForm, image_url: e.target.value });
+                        setImagePreview(e.target.value);
+                      }}
+                      placeholder="Image URL or upload"
+                      className="mb-2"
+                    />
+                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploadingImage}>
+                      {uploadingImage ? <Loader2 className="animate-spin mr-2" size={14} /> : <Upload size={14} className="mr-2" />}
+                      Upload
+                    </Button>
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, true)} />
+                  </div>
                 </div>
               </div>
 
-              {/* Additional Images */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Additional Images</label>
-                <input type="file" ref={multiImageInputRef} onChange={(e) => handleImageUpload(e, false)} accept="image/*" className="hidden" />
+                <input ref={multiImageInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false)} />
                 <div className="flex flex-wrap gap-2">
-                  {productForm.images.map((img, idx) => (
-                    <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden">
-                      <img src={img} alt={`Additional ${idx + 1}`} className="w-full h-full object-cover" />
+                  {productForm.images.map((img, index) => (
+                    <div key={index} className="relative">
+                      <img src={img} alt={`Image ${index + 1}`} className="w-20 h-20 object-cover rounded-lg" />
                       <button
                         type="button"
-                        onClick={() => removeAdditionalImage(idx)}
+                        onClick={() => removeAdditionalImage(index)}
                         className="absolute top-1 right-1 p-0.5 bg-destructive text-destructive-foreground rounded-full"
                       >
                         <X size={12} />
