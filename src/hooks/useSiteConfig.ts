@@ -32,11 +32,20 @@ export interface HeroImage {
   subtitle: string;
 }
 
+export interface SiteContent {
+  mission: string;
+  vision: string;
+  about_title: string;
+  about_description: string;
+  about_extended: string;
+}
+
 export interface SiteConfigData {
   contacts: SiteContacts;
   address: SiteAddress;
   social: SiteSocial;
   hero_images: HeroImage[];
+  site_content: SiteContent;
 }
 
 const defaultConfig: SiteConfigData = {
@@ -61,6 +70,13 @@ const defaultConfig: SiteConfigData = {
     youtube: "https://youtube.com/queenstop",
   },
   hero_images: [],
+  site_content: {
+    mission: "To provide exceptional luxury services that exceed expectations, making elegance accessible to everyone while maintaining the highest standards of quality and customer satisfaction.",
+    vision: "To be the premier destination for luxury lifestyle services, recognized for our commitment to excellence, innovation, and creating unforgettable experiences for every client we serve.",
+    about_title: "The Queenstop Story",
+    about_description: "Founded with a passion for excellence, Queenstop has grown from a humble car hire service to a comprehensive luxury brand offering premium vehicles, exquisite jewellery, and elegant wedding accessories.",
+    about_extended: "Our journey has been defined by one simple principle: delivering elegance in motion. Whether it's the perfect vehicle for your special occasion, a stunning piece of jewellery that tells your story, or wedding accessories that complete your perfect day — we're committed to making every moment memorable.",
+  },
 };
 
 export const useSiteConfig = () => {
@@ -85,6 +101,8 @@ export const useSiteConfig = () => {
           newConfig.social = item.config_value as unknown as SiteSocial;
         } else if (item.config_key === "hero_images") {
           newConfig.hero_images = item.config_value as unknown as HeroImage[];
+        } else if (item.config_key === "site_content") {
+          newConfig.site_content = item.config_value as unknown as SiteContent;
         }
       });
 
@@ -101,12 +119,21 @@ export const useSiteConfig = () => {
   }, []);
 
   const updateConfig = async (key: string, value: unknown) => {
-    const { error } = await supabase
+    // First try to update
+    const { error: updateError, count } = await supabase
       .from("site_config")
       .update({ config_value: value as any })
       .eq("config_key", key);
 
-    if (error) throw error;
+    // If no rows were updated, insert instead
+    if (updateError || count === 0) {
+      const { error: insertError } = await supabase
+        .from("site_config")
+        .insert({ config_key: key, config_value: value as any });
+      
+      if (insertError) throw insertError;
+    }
+
     await fetchConfig();
   };
 
@@ -117,10 +144,10 @@ export const useSiteConfig = () => {
 export const formatKwacha = (amount: number): string => {
   return new Intl.NumberFormat("en-ZM", {
     style: "currency",
-    currency: "ZMK",
+    currency: "ZMW",
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  }).format(amount).replace("ZMK", "K");
+  }).format(amount).replace("ZMW", "K");
 };
 
 // Helper to generate WhatsApp link with country code

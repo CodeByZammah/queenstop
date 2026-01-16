@@ -1,0 +1,5 @@
+-- Add site content config for mission, vision, about, etc.
+INSERT INTO public.site_config (config_key, config_value)
+VALUES 
+  ('site_content', '{"mission": "To provide exceptional luxury services that exceed expectations, making elegance accessible to everyone while maintaining the highest standards of quality and customer satisfaction.", "vision": "To be the premier destination for luxury lifestyle services, recognized for our commitment to excellence, innovation, and creating unforgettable experiences for every client we serve.", "about_title": "The Queenstop Story", "about_description": "Founded with a passion for excellence, Queenstop has grown from a humble car hire service to a comprehensive luxury brand offering premium vehicles, exquisite jewellery, and elegant wedding accessories.", "about_extended": "Our journey has been defined by one simple principle: delivering elegance in motion. Whether it''s the perfect vehicle for your special occasion, a stunning piece of jewellery that tells your story, or wedding accessories that complete your perfect day — we''re committed to making every moment memorable."}'::jsonb)
+ON CONFLICT (config_key) DO NOTHING;

@@ -2,9 +2,12 @@ import { useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import BookingModal from "@/components/BookingModal";
+import ProductImageModal from "@/components/ProductImageModal";
 import { Button } from "@/components/ui/button";
 import { Heart, Crown, Sparkles, Gift, ShoppingBag, MessageCircle, ArrowRight, Loader2 } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
+import { formatKwacha, generateWhatsAppLink } from "@/hooks/useSiteConfig";
+import { siteConfig } from "@/config/siteConfig";
 import weddingImg from "@/assets/wedding-accessories.jpg";
 
 const categories = [
@@ -18,9 +21,31 @@ const Wedding = () => {
   const { products, loading } = useProducts("wedding");
   const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string } | null>(null);
   
-  const whatsappNumber = "+1234567890";
-  const whatsappMessage = encodeURIComponent("Hello! I'm interested in your wedding accessories.");
-  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
+  // Image modal state
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedProductName, setSelectedProductName] = useState("");
+  
+  const whatsappLink = generateWhatsAppLink(
+    siteConfig.admin.whatsappRaw, 
+    "+260", 
+    "Hello! I'm interested in your wedding accessories."
+  );
+
+  const openImageModal = (product: { name: string; image_url: string | null; images?: string[] | null }) => {
+    const allImages: string[] = [];
+    if (product.image_url) allImages.push(product.image_url);
+    if (product.images?.length) {
+      product.images.forEach(img => {
+        if (!allImages.includes(img)) allImages.push(img);
+      });
+    }
+    if (allImages.length === 0) allImages.push(weddingImg);
+    
+    setSelectedImages(allImages);
+    setSelectedProductName(product.name);
+    setImageModalOpen(true);
+  };
 
   return (
     <div className="min-h-screen">
@@ -96,36 +121,49 @@ const Wedding = () => {
               <p className="text-center text-muted-foreground">No wedding accessories available at the moment.</p>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {products.map((product) => (
-                  <div key={product.id} className="bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-elevated transition-elegant group">
-                    <div className="relative h-64 overflow-hidden">
-                      <img 
-                        src={product.image_url || weddingImg} 
-                        alt={product.name} 
-                        className="w-full h-full object-cover transition-elegant group-hover:scale-110" 
-                      />
-                      <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-gold/90 text-charcoal text-xs font-medium">
-                        Wedding
+                {products.map((product) => {
+                  const images = (product as any).images as string[] | null;
+                  
+                  return (
+                    <div key={product.id} className="bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-elevated transition-elegant group">
+                      <div 
+                        className="relative h-64 overflow-hidden cursor-pointer"
+                        onClick={() => openImageModal({ name: product.name, image_url: product.image_url, images })}
+                      >
+                        <img 
+                          src={product.image_url || weddingImg} 
+                          alt={product.name} 
+                          className="w-full h-full object-cover aspect-square transition-elegant group-hover:scale-110" 
+                        />
+                        <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-gold/90 text-charcoal text-xs font-medium">
+                          Wedding
+                        </div>
+                        {/* Multiple images indicator */}
+                        {images && images.length > 0 && (
+                          <div className="absolute bottom-4 right-4 px-2 py-1 rounded bg-background/80 text-foreground text-xs">
+                            +{images.length} photos
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-6">
+                        <h3 className="text-xl font-display font-semibold text-foreground mb-2">{product.name}</h3>
+                        <p className="text-muted-foreground text-sm mb-3">{product.description}</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-primary font-bold text-xl">{formatKwacha(product.price)}</p>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="group"
+                            onClick={() => setSelectedProduct({ id: product.id, name: product.name })}
+                          >
+                            Enquire
+                            <ShoppingBag className="ml-2" size={14} />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                    <div className="p-6">
-                      <h3 className="text-xl font-display font-semibold text-foreground mb-2">{product.name}</h3>
-                      <p className="text-muted-foreground text-sm mb-3">{product.description}</p>
-                      <div className="flex items-center justify-between">
-                        <p className="text-primary font-bold text-xl">${product.price}</p>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="group"
-                          onClick={() => setSelectedProduct({ id: product.id, name: product.name })}
-                        >
-                          Enquire
-                          <ShoppingBag className="ml-2" size={14} />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             
@@ -167,6 +205,13 @@ const Wedding = () => {
         productName={selectedProduct?.name}
         productId={selectedProduct?.id}
         category="wedding"
+      />
+      
+      <ProductImageModal
+        images={selectedImages}
+        productName={selectedProductName}
+        isOpen={imageModalOpen}
+        onClose={() => setImageModalOpen(false)}
       />
     </div>
   );

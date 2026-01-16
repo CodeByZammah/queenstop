@@ -1,7 +1,9 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Award, Users, Target, Heart, ArrowRight } from "lucide-react";
+import { Award, Users, Target, Heart, ArrowRight, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useSiteConfig } from "@/hooks/useSiteConfig";
 import logomark from "@/assets/logomark.png";
 
 const values = [
@@ -19,6 +21,18 @@ const milestones = [
 ];
 
 const About = () => {
+  const { config, loading } = useSiteConfig();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const { site_content } = config;
+
   return (
     <div className="min-h-screen">
       <Header />
@@ -31,23 +45,26 @@ const About = () => {
               <div>
                 <span className="text-primary font-medium text-sm uppercase tracking-widest mb-4 block">About Us</span>
                 <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-6">
-                  The <span className="text-primary">Queenstop</span> Story
+                  {site_content.about_title.includes("Queenstop") ? (
+                    <>
+                      The <span className="text-primary">Queenstop</span> Story
+                    </>
+                  ) : (
+                    site_content.about_title
+                  )}
                 </h1>
                 <p className="text-lg text-muted-foreground mb-6">
-                  Founded with a passion for excellence, Queenstop has grown from a humble car hire 
-                  service to a comprehensive luxury brand offering premium vehicles, exquisite jewellery, 
-                  and elegant wedding accessories.
+                  {site_content.about_description}
                 </p>
                 <p className="text-muted-foreground mb-8">
-                  Our journey has been defined by one simple principle: delivering elegance in motion. 
-                  Whether it's the perfect vehicle for your special occasion, a stunning piece of jewellery 
-                  that tells your story, or wedding accessories that complete your perfect day — we're 
-                  committed to making every moment memorable.
+                  {site_content.about_extended}
                 </p>
-                <Button size="lg" className="rounded-full">
-                  Get in Touch
-                  <ArrowRight className="ml-2" size={18} />
-                </Button>
+                <Link to="/contact">
+                  <Button size="lg" className="rounded-full">
+                    Get in Touch
+                    <ArrowRight className="ml-2" size={18} />
+                  </Button>
+                </Link>
               </div>
               <div className="relative">
                 <div className="aspect-square rounded-2xl bg-charcoal flex items-center justify-center p-12">
@@ -66,17 +83,13 @@ const About = () => {
               <div className="p-8 rounded-2xl bg-card border border-border">
                 <h2 className="text-2xl font-display font-bold text-foreground mb-4">Our Mission</h2>
                 <p className="text-muted-foreground">
-                  To provide exceptional luxury services that exceed expectations, making elegance 
-                  accessible to everyone while maintaining the highest standards of quality and 
-                  customer satisfaction.
+                  {site_content.mission}
                 </p>
               </div>
               <div className="p-8 rounded-2xl bg-charcoal text-background">
                 <h2 className="text-2xl font-bold mb-4">Our Vision</h2>
                 <p className="text-background/80">
-                  To be the premier destination for luxury lifestyle services, recognized for our 
-                  commitment to excellence, innovation, and creating unforgettable experiences for 
-                  every client we serve.
+                  {site_content.vision}
                 </p>
               </div>
             </div>
