@@ -40,12 +40,17 @@ export interface SiteContent {
   about_extended: string;
 }
 
+export interface AnalyticsConfig {
+  ga_measurement_id: string;
+}
+
 export interface SiteConfigData {
   contacts: SiteContacts;
   address: SiteAddress;
   social: SiteSocial;
   hero_images: HeroImage[];
   site_content: SiteContent;
+  analytics: AnalyticsConfig;
 }
 
 const defaultConfig: SiteConfigData = {
@@ -77,6 +82,9 @@ const defaultConfig: SiteConfigData = {
     about_description: "Founded with a passion for excellence, Queenstop has grown from a humble car hire service to a comprehensive luxury brand offering premium vehicles, exquisite jewellery, and elegant wedding accessories.",
     about_extended: "Our journey has been defined by one simple principle: delivering elegance in motion. Whether it's the perfect vehicle for your special occasion, a stunning piece of jewellery that tells your story, or wedding accessories that complete your perfect day — we're committed to making every moment memorable.",
   },
+  analytics: {
+    ga_measurement_id: "",
+  },
 };
 
 export const useSiteConfig = () => {
@@ -103,6 +111,8 @@ export const useSiteConfig = () => {
           newConfig.hero_images = item.config_value as unknown as HeroImage[];
         } else if (item.config_key === "site_content") {
           newConfig.site_content = item.config_value as unknown as SiteContent;
+        } else if (item.config_key === "analytics") {
+          newConfig.analytics = item.config_value as unknown as AnalyticsConfig;
         }
       });
 
