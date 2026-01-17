@@ -1,11 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Phone, ArrowRight } from "lucide-react";
+import { siteConfig, getWhatsAppLink } from "@/config/siteConfig";
 
 const ContactCTA = () => {
-  const whatsappNumber = "+1234567890";
-  const whatsappMessage = encodeURIComponent("Hello! I'm interested in Queenstop services.");
-  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
-
+  const whatsappLink = getWhatsAppLink();
   return (
     <section className="py-20 bg-muted">
       <div className="container mx-auto px-4">
@@ -38,7 +36,7 @@ const ContactCTA = () => {
                 <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={16} />
               </Button>
             </a>
-            <a href="tel:+1234567890">
+            <a href={`tel:${siteConfig.phoneRaw}`}>
               <Button variant="outline" size="lg" className="w-full sm:w-auto rounded-full">
                 <Phone size={18} className="mr-2" />
                 Call Us Now
