@@ -2,6 +2,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
@@ -10,6 +12,11 @@ const ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "http://localhost:3000",
 ];
+
+// Rate limiting map (in-memory, resets on cold starts)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_MAX = 10; // max requests per window
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 
 const getCorsHeaders = (origin: string | null) => {
   const allowedOrigin = origin && ALLOWED_ORIGINS.some(allowed => origin.includes(allowed.replace("https://", "").replace("http://", "")))
@@ -32,6 +39,24 @@ const sanitizeHtml = (input: unknown): string => {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#x27;");
+};
+
+// Rate limiting function
+const checkRateLimit = (identifier: string): boolean => {
+  const now = Date.now();
+  const entry = rateLimitMap.get(identifier);
+  
+  if (!entry || now > entry.resetTime) {
+    rateLimitMap.set(identifier, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return false;
+  }
+  
+  entry.count++;
+  return true;
 };
 
 // Admin config
@@ -134,7 +159,21 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Verify request comes from authenticated user or has valid anon key
+    // Get client identifier for rate limiting (use IP or fallback)
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+                     req.headers.get("cf-connecting-ip") || 
+                     "unknown";
+    
+    // Check rate limit
+    if (!checkRateLimit(clientIp)) {
+      console.warn(`Rate limit exceeded for IP: ${clientIp}`);
+      return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    // Verify request authentication
     const authHeader = req.headers.get("authorization");
     const apiKey = req.headers.get("apikey");
     
@@ -143,6 +182,40 @@ const handler = async (req: Request): Promise<Response> => {
         status: 401,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
+    }
+
+    // Validate the auth token or API key with Supabase
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      console.error("Missing Supabase configuration");
+      return new Response(JSON.stringify({ error: "Server configuration error" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    // Create Supabase client to verify the token
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: {
+        headers: authHeader ? { Authorization: authHeader } : {},
+      },
+    });
+
+    // For authenticated requests, verify the user
+    // For anonymous requests with valid anon key, allow public submissions
+    if (authHeader && authHeader !== `Bearer ${SUPABASE_ANON_KEY}`) {
+      const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+      
+      // If auth header is provided but invalid, reject
+      if (authError && authHeader !== `Bearer ${apiKey}`) {
+        console.warn("Invalid auth token provided");
+        // Still allow if using valid API key (anon key for public forms)
+        if (apiKey !== SUPABASE_ANON_KEY) {
+          return new Response(JSON.stringify({ error: "Invalid authentication" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          });
+        }
+      }
     }
 
     const { type, data }: NotificationRequest = await req.json();
@@ -155,7 +228,29 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log(`Processing ${type} notification`);
+    // Validate required fields based on type
+    if (type === "booking" && (!data.customer_name || !data.customer_email)) {
+      return new Response(JSON.stringify({ error: "Missing required booking fields" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+    
+    if (type === "contact" && (!data.name || !data.email || !data.message)) {
+      return new Response(JSON.stringify({ error: "Missing required contact fields" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+    
+    if (type === "testimonial" && (!data.name || !data.content)) {
+      return new Response(JSON.stringify({ error: "Missing required testimonial fields" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    console.log(`Processing ${type} notification from ${clientIp}`);
 
     let emailContent: { subject: string; html: string };
 
@@ -191,7 +286,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Email sent successfully:", emailResult);
 
-    return new Response(JSON.stringify({ success: true, emailResult }), {
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
