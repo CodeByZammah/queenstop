@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Loader2, User, Calendar, LogOut, Save } from "lucide-react";
+import { Loader2, User, Calendar, LogOut, Save, Copy, Check } from "lucide-react";
 import { getSafeErrorMessage } from "@/lib/error-handler";
 import type { User as SupabaseUser, Session } from "@supabase/supabase-js";
 
@@ -43,12 +43,22 @@ const Account = () => {
   const [activeTab, setActiveTab] = useState<"profile" | "bookings">("profile");
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [copiedId, setCopiedId] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
     defaultPickupLocation: "",
     defaultDropoffLocation: "",
   });
+
+  const copyUserId = async () => {
+    if (user?.id) {
+      await navigator.clipboard.writeText(user.id);
+      setCopiedId(true);
+      toast({ title: "Copied!", description: "User ID copied to clipboard" });
+      setTimeout(() => setCopiedId(false), 2000);
+    }
+  };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -234,6 +244,38 @@ const Account = () => {
             {activeTab === "profile" && (
               <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
                 <h2 className="text-xl font-semibold mb-6">Profile Information</h2>
+                
+                {/* User ID Section */}
+                <div className="mb-6 p-4 bg-muted/50 rounded-lg border border-border">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground mb-1">Your User ID</p>
+                      <p className="text-xs text-muted-foreground font-mono break-all">{user?.id}</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={copyUserId}
+                      className="flex-shrink-0 ml-3"
+                    >
+                      {copiedId ? (
+                        <>
+                          <Check className="mr-1 h-4 w-4 text-green-600" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="mr-1 h-4 w-4" />
+                          Copy ID
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Share this ID with an admin if they need to grant you special access.
+                  </p>
+                </div>
+
                 <div className="space-y-4">
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
