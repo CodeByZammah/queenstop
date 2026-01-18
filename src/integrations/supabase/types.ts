@@ -282,7 +282,36 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      testimonials_public: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string | null
+          image_url: string | null
+          name: string | null
+          rating: number | null
+          role: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          image_url?: string | null
+          name?: string | null
+          rating?: number | null
+          role?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          image_url?: string | null
+          name?: string | null
+          rating?: number | null
+          role?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
