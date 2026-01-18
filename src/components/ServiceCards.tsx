@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
-import { Car, Gem, Heart, ArrowRight } from "lucide-react";
+import { Car, Gem, Heart, ArrowRight, Pill } from "lucide-react";
 import heroCar from "@/assets/hero-car.jpg";
 import jewellery from "@/assets/jewellery.jpg";
 import wedding from "@/assets/wedding-accessories.jpg";
+import pharmacy from "@/assets/pharmacy.jpg";
 
 const services = [
   {
@@ -26,6 +27,13 @@ const services = [
     image: wedding,
     href: "/wedding",
   },
+  {
+    icon: Pill,
+    title: "Pharmacy",
+    description: "Quality healthcare products and medications. Your health is our priority.",
+    image: pharmacy,
+    href: "/pharmacy",
+  },
 ];
 
 const ServiceCards = () => {
@@ -47,7 +55,7 @@ const ServiceCards = () => {
         </div>
 
         {/* Service Cards Grid */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {services.map((service) => (
             <Link
               key={service.title}

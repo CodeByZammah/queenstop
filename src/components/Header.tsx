@@ -39,8 +39,9 @@ const Header = () => {
     { name: "Car Hire", href: "/car-hire" },
     { name: "Jewellery", href: "/jewellery" },
     { name: "Wedding", href: "/wedding" },
-    { name: "About Us", href: "/about" },
-    { name: "Contact Us", href: "/contact" },
+    { name: "Pharmacy", href: "/pharmacy" },
+    { name: "About", href: "/about" },
+    { name: "Contact", href: "/contact" },
   ];
 
   const handleBookingClick = () => {

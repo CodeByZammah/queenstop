@@ -8,14 +8,14 @@ import {
   Plus, LogOut, Car, Gem, Heart, Loader2, Trash2, Edit2, 
   Package, Mail, Calendar, X, Save, Upload, Image as ImageIcon,
   Check, XCircle, Clock, Eye, EyeOff, MessageSquare, BarChart3, Star,
-  Settings, Key, Globe, Phone, MapPin, ExternalLink, Users, UserPlus, FileText
+  Settings, Key, Globe, Phone, MapPin, ExternalLink, Users, UserPlus, FileText, Pill
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import type { User } from "@supabase/supabase-js";
 import { getSafeErrorMessage } from "@/lib/error-handler";
 import { formatKwacha, generateWhatsAppLink, useSiteConfig, type SiteContacts, type SiteAddress, type SiteSocial, type HeroImage, type SiteContent } from "@/hooks/useSiteConfig";
 
-type ProductCategory = "car" | "jewellery" | "wedding";
+type ProductCategory = "car" | "jewellery" | "wedding" | "pharmacy";
 type BookingStatus = "pending" | "completed" | "cancelled";
 
 interface Product {
@@ -627,29 +627,59 @@ const Admin = () => {
 
     setAddingAdmin(true);
     try {
-      // First, we need to get the user ID by email
-      // We'll create an invite-based flow - admin sends invite link with password
-      const tempPassword = Math.random().toString(36).slice(-12) + "A1!";
-      
+      // First check if user already exists by trying to look them up
+      // We'll try to sign them up - if they exist, we'll get an error we can handle
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: newAdminEmail,
-        password: tempPassword,
+        password: Math.random().toString(36).slice(-12) + "A1!",
       });
 
-      if (signUpError) throw signUpError;
+      let userId = signUpData?.user?.id;
+      
+      // If user already exists (identities will be empty for existing users with email confirmation)
+      if (signUpError) {
+        // For existing users, we need a different approach
+        // Check if error indicates user exists
+        if (signUpError.message.includes("already registered") || signUpError.message.includes("already exists")) {
+          toast({ 
+            title: "User Already Exists", 
+            description: "This email is already registered. Ask them to log in, then use 'Promote Existing User' option.",
+            variant: "destructive"
+          });
+          setAddingAdmin(false);
+          return;
+        }
+        throw signUpError;
+      }
 
-      if (signUpData.user) {
+      if (!userId && signUpData?.user?.identities?.length === 0) {
+        // User already exists with this email
+        toast({ 
+          title: "User Already Exists", 
+          description: "This email is already registered. They need to log in first, then you can promote them using their User ID.",
+        });
+        setAddingAdmin(false);
+        return;
+      }
+
+      if (userId) {
         // Add admin role
         const { error: roleError } = await supabase
           .from('user_roles')
-          .insert({ user_id: signUpData.user.id, role: 'admin' });
+          .insert({ user_id: userId, role: 'admin' });
 
-        if (roleError) throw roleError;
-
-        toast({ 
-          title: "Admin Added", 
-          description: `Admin invite sent to ${newAdminEmail}. Temporary password: ${tempPassword}. Please share this securely and ask them to change it.`,
-        });
+        if (roleError) {
+          if (roleError.message.includes("duplicate")) {
+            toast({ title: "Already Admin", description: "This user is already an admin" });
+          } else {
+            throw roleError;
+          }
+        } else {
+          toast({ 
+            title: "Admin Added!", 
+            description: `New admin account created for ${newAdminEmail}. They'll receive an email to set their password.`,
+          });
+        }
         setNewAdminEmail("");
         fetchAdminUsers();
       }
@@ -657,6 +687,42 @@ const Admin = () => {
       toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
     } finally {
       setAddingAdmin(false);
+    }
+  };
+
+  // Promote existing user to admin by ID
+  const [promoteUserId, setPromoteUserId] = useState("");
+  const [promotingUser, setPromotingUser] = useState(false);
+
+  const handlePromoteUser = async () => {
+    if (!promoteUserId.trim()) {
+      toast({ title: "Error", description: "Please enter a user ID", variant: "destructive" });
+      return;
+    }
+
+    setPromotingUser(true);
+    try {
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({ user_id: promoteUserId.trim(), role: 'admin' });
+
+      if (roleError) {
+        if (roleError.message.includes("duplicate")) {
+          toast({ title: "Already Admin", description: "This user is already an admin" });
+        } else if (roleError.message.includes("foreign key") || roleError.message.includes("uuid")) {
+          toast({ title: "Invalid User ID", description: "User ID not found. Make sure the user has signed up first.", variant: "destructive" });
+        } else {
+          throw roleError;
+        }
+      } else {
+        toast({ title: "Success!", description: "User has been promoted to admin" });
+        setPromoteUserId("");
+        fetchAdminUsers();
+      }
+    } catch (error: unknown) {
+      toast({ title: "Error", description: getSafeErrorMessage(error), variant: "destructive" });
+    } finally {
+      setPromotingUser(false);
     }
   };
 
@@ -742,6 +808,7 @@ const Admin = () => {
       case "car": return <Car size={18} />;
       case "jewellery": return <Gem size={18} />;
       case "wedding": return <Heart size={18} />;
+      case "pharmacy": return <Pill size={18} />;
     }
   };
 
@@ -832,7 +899,7 @@ const Admin = () => {
         {activeTab === "products" && (
           <>
             <div className="flex flex-wrap gap-2 mb-6">
-              {(["car", "jewellery", "wedding"] as ProductCategory[]).map((cat) => (
+              {(["car", "jewellery", "wedding", "pharmacy"] as ProductCategory[]).map((cat) => (
                 <Button key={cat} variant={activeCategory === cat ? "default" : "outline"} size="sm" onClick={() => setActiveCategory(cat)}>
                   {getCategoryIcon(cat)}
                   <span className="ml-2 capitalize hidden sm:inline">{cat === "car" ? "Car Hire" : cat}</span>
@@ -1212,10 +1279,37 @@ const Admin = () => {
             {/* Admins Settings */}
             {settingsTab === "admins" && (
               <div className="space-y-6">
-                <div className="bg-card rounded-xl shadow-card p-6">
-                  <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <UserPlus size={20} />Add New Admin
+                {/* Quick Promote by User ID */}
+                <div className="bg-card rounded-xl shadow-card p-6 border-2 border-primary/20">
+                  <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <UserPlus size={20} className="text-primary" />Promote Existing User (Easiest)
                   </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    If someone already signed up on the site, ask them to go to <strong>My Account</strong> page where they'll see their User ID. Enter it below to make them an admin instantly.
+                  </p>
+                  <div className="flex gap-3">
+                    <Input
+                      type="text"
+                      value={promoteUserId}
+                      onChange={(e) => setPromoteUserId(e.target.value)}
+                      placeholder="Paste User ID here (e.g., a1b2c3d4-...)"
+                      className="flex-1 font-mono text-sm"
+                    />
+                    <Button onClick={handlePromoteUser} disabled={promotingUser}>
+                      {promotingUser && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Promote
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Create New Admin Account */}
+                <div className="bg-card rounded-xl shadow-card p-6">
+                  <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <UserPlus size={20} />Create New Admin Account
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Create a brand new admin account. They'll receive an email to set their password.
+                  </p>
                   <div className="flex gap-3">
                     <Input
                       type="email"
@@ -1224,14 +1318,11 @@ const Admin = () => {
                       placeholder="Enter email address"
                       className="flex-1"
                     />
-                    <Button onClick={handleAddAdmin} disabled={addingAdmin}>
+                    <Button onClick={handleAddAdmin} disabled={addingAdmin} variant="outline">
                       {addingAdmin && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Add Admin
+                      Create Admin
                     </Button>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    The new admin will receive a temporary password that they should change immediately.
-                  </p>
                 </div>
 
                 <div className="bg-card rounded-xl shadow-card p-6">
@@ -1242,8 +1333,8 @@ const Admin = () => {
                     {adminUsers.map((admin) => (
                       <div key={admin.user_id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                         <div>
-                          <p className="text-foreground font-medium">Admin User</p>
-                          <p className="text-sm text-muted-foreground">ID: {admin.user_id.slice(0, 8)}...</p>
+                          <p className="text-foreground font-medium">{admin.user_id === user?.id ? "You" : "Admin User"}</p>
+                          <p className="text-xs text-muted-foreground font-mono">ID: {admin.user_id}</p>
                         </div>
                         <Button 
                           size="sm" 

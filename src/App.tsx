@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import CarHire from "./pages/CarHire";
 import Jewellery from "./pages/Jewellery";
 import Wedding from "./pages/Wedding";
+import Pharmacy from "./pages/Pharmacy";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Auth from "./pages/Auth";
@@ -30,6 +31,7 @@ const AppContent = () => {
         <Route path="/car-hire" element={<CarHire />} />
         <Route path="/jewellery" element={<Jewellery />} />
         <Route path="/wedding" element={<Wedding />} />
+        <Route path="/pharmacy" element={<Pharmacy />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<ClientAuth />} />
